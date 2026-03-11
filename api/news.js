@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -6,9 +6,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured in Vercel environment variables" });
+  if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not set in Vercel env vars" });
 
-  const prompt = `Give me 6 NSE Kenya stock market news items from March 2026. Cover Safaricom (SCOM), Equity Bank (EQTY), KCB, EABL, and general NSE market trends. Return ONLY a raw JSON array — no markdown, no backticks, no explanation before or after. Each object must have exactly these fields: title (string), source (string), summary (max 2 sentences), sentiment ("positive" or "negative" or "neutral"), symbol (NSE ticker like SCOM/EQTY/KCB/EABL or "NSE"), date (string like "Mar 11, 2026").`;
+  const prompt = `Give me 6 NSE Kenya stock market news items from March 2026. Cover Safaricom (SCOM), Equity Bank (EQTY), KCB, EABL, and general NSE market trends. Return ONLY a raw JSON array with no markdown, no backticks, no explanation. Each object must have: title, source, summary (max 2 sentences), sentiment (positive/negative/neutral), symbol (SCOM/EQTY/KCB/EABL/NSE), date.`;
 
   try {
     const response = await fetch(
@@ -29,11 +29,11 @@ export default async function handler(req, res) {
     const clean = raw.replace(/```json|```/g, "").trim();
     try {
       const news = JSON.parse(clean);
-      res.status(200).json({ news });
+      return res.status(200).json({ news });
     } catch {
-      res.status(200).json({ news: [], raw });
+      return res.status(200).json({ news: [] });
     }
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message });
   }
-}
+};
