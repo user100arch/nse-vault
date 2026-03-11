@@ -36,7 +36,7 @@ const ALL_NSE_STOCKS = [
   { symbol:"CARB", name:"Carbacid Investments",     sector:"Manufacturing", price:29.30, change:-1.51, volume:27230,    pe:14.3, divYield:5.1, high52:35.00, low52:18.50, mktCap:"4B",   color:"#78716c" },
   { symbol:"JUB",  name:"Jubilee Holdings",         sector:"Insurance",     price:389.75,change:0.32,  volume:6200,     pe:9.5,  divYield:3.2, high52:420.0, low52:270.0, mktCap:"38B",  color:"#6366f1" },
   { symbol:"BRIT", name:"Britam Holdings",          sector:"Insurance",     price:11.95, change:1.70,  volume:373120,   pe:11.2, divYield:4.2, high52:14.00, low52:7.50,  mktCap:"31B",  color:"#3b82f6" },
-  { symbol:"CIC",  name:"CIC Insurance Group",      sector:"Insurance",     price:4.98,  change:-1.58, volume:205810,   pe:9.8,  divYield:3.1, high52:6.50,  low52:3.20,  mktCap:"9B",   color:"#8b5cf6" },
+  { symbol:"CIC",  name:"CIC Insurance Group",       sector:"Insurance",     price:4.98,  change:-1.58, volume:205810,   pe:9.8,  divYield:3.1, high52:6.50,  low52:3.20,  mktCap:"9B",   color:"#8b5cf6" },
   { symbol:"CTUM", name:"Centum Investment",        sector:"Investment",    price:14.30, change:-3.05, volume:15630,    pe:null, divYield:1.5, high52:19.50, low52:12.00, mktCap:"16B",  color:"#14b8a6" },
   { symbol:"SBIC", name:"Stanbic Holdings",         sector:"Banking",       price:257.00,change:0.00,  volume:12000,    pe:8.9,  divYield:5.6, high52:270.0, low52:188.0, mktCap:"102B", color:"#fb7185" },
 ];
@@ -93,23 +93,27 @@ function calcBollinger(data, period = 20) {
   });
 }
 
-function getSignal(stock, hist, rsi) {
+function getSignal(stock, hist, rsiValue) {
   const smaD = calcSMA(hist, 20); const lastSMA = smaD[smaD.length - 1]?.sma;
-  const vol = calcVolatility(hist); let score = 0, reasons = [];
-  if (stock.change > 1.5)  { score += 1; reasons.push("Strong momentum ↑"); }
-  if (stock.change < -1.5) { score -= 1; reasons.push("Selling pressure ↓"); }
-  if (rsi < 35)  { score += 2; reasons.push(`Oversold RSI ${rsi}`); }
-  else if (rsi < 45) { score += 1; reasons.push(`Near oversold RSI ${rsi}`); }
-  if (rsi > 65)  { score -= 2; reasons.push(`Overbought RSI ${rsi}`); }
-  if (stock.pe && stock.pe < 7)  { score += 2; reasons.push("Deep value P/E<7"); }
-  else if (stock.pe && stock.pe < 10) { score += 1; reasons.push("Value P/E<10"); }
-  if (stock.divYield > 5) { score += 1; reasons.push(`High yield ${stock.divYield}%`); }
-  if (lastSMA && stock.price > lastSMA * 1.01) { score += 1; reasons.push("Above 20-day MA"); }
-  if (lastSMA && stock.price < lastSMA * 0.99) { score -= 1; reasons.push("Below 20-day MA"); }
-  if (vol < 30) { score += 1; reasons.push("Low volatility"); }
-  if (vol > 55) { score -= 1; reasons.push("High volatility risk"); }
-  const signal = score >= 3 ? "STRONG BUY" : score >= 1 ? "BUY" : score <= -3 ? "STRONG SELL" : score <= -1 ? "SELL" : "HOLD";
-  return { signal, score, reasons, vol };
+  const volValue = calcVolatility(hist); 
+  let currentScore = 0; 
+  let reasonsList = [];
+
+  if (stock.change > 1.5)  { currentScore += 1; reasonsList.push("Strong momentum ↑"); }
+  if (stock.change < -1.5) { currentScore -= 1; reasonsList.push("Selling pressure ↓"); }
+  if (rsiValue < 35)  { currentScore += 2; reasonsList.push(`Oversold RSI ${rsiValue}`); }
+  else if (rsiValue < 45) { currentScore += 1; reasonsList.push(`Near oversold RSI ${rsiValue}`); }
+  if (rsiValue > 65)  { currentScore -= 2; reasonsList.push(`Overbought RSI ${rsiValue}`); }
+  if (stock.pe && stock.pe < 7)  { currentScore += 2; reasonsList.push("Deep value P/E<7"); }
+  else if (stock.pe && stock.pe < 10) { currentScore += 1; reasonsList.push("Value P/E<10"); }
+  if (stock.divYield > 5) { currentScore += 1; reasonsList.push(`High yield ${stock.divYield}%`); }
+  if (lastSMA && stock.price > lastSMA * 1.01) { currentScore += 1; reasonsList.push("Above 20-day MA"); }
+  if (lastSMA && stock.price < lastSMA * 0.99) { currentScore -= 1; reasonsList.push("Below 20-day MA"); }
+  if (volValue < 30) { currentScore += 1; reasonsList.push("Low volatility"); }
+  if (volValue > 55) { currentScore -= 1; reasonsList.push("High volatility risk"); }
+
+  const signalValue = currentScore >= 3 ? "STRONG BUY" : currentScore >= 1 ? "BUY" : currentScore <= -3 ? "STRONG SELL" : currentScore <= -1 ? "SELL" : "HOLD";
+  return { signal: signalValue, score: currentScore, reasons: reasonsList, vol: volValue };
 }
 
 const SIGNAL_STYLE = {
@@ -152,7 +156,7 @@ function ApiKeyGate({ onKey }) {
    MAIN APP
 ================================================================ */
 export default function App() {
-  const [apiKey, setApiKey] = useState(() => storage.get("anthropic_key") || "");
+  const [apiKey, setApiKey] = useState(() => process.env.REACT_APP_ANTHROPIC_KEY || storage.get("anthropic_key") || "");
   const [page, setPage] = useState("dashboard");
   const [holdings, setHoldings] = useState(() => storage.get("holdings") || {});
   const [watchlist, setWatchlist] = useState(() => storage.get("watchlist") || ["SCOM","EQTY","COOP","CIC","BRIT"]);
@@ -169,13 +173,23 @@ export default function App() {
   const [journalText, setJournalText] = useState("");
   const histCache = useRef({});
 
-  const getHistory = useCallback((symbol) => {
+  const getHistoryCached = useCallback((symbol) => {
     if (!histCache.current[symbol]) histCache.current[symbol] = genHistory(ALL_NSE_STOCKS.find(s => s.symbol === symbol)?.price || 50);
     return histCache.current[symbol];
   }, []);
 
-  const save = (key, val) => { storage.set(key, val); };
-  const notify = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
+  const saveToStorage = (key, val) => { storage.set(key, val); };
+  const notifyUser = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
+
+  /* Check alerts */
+  useEffect(() => {
+    priceAlerts.forEach(alertItem => {
+      const stock = ALL_NSE_STOCKS.find(s => s.symbol === alertItem.symbol);
+      if (!stock) return;
+      const triggered = alertItem.direction === "above" ? stock.price >= parseFloat(alertItem.targetPrice) : stock.price <= parseFloat(alertItem.targetPrice);
+      if (triggered && alertItem.active) notifyUser(`🔔 ${alertItem.symbol} target hit!`, "alert");
+    });
+  }, [priceAlerts]);
 
   if (!apiKey) return <ApiKeyGate onKey={k => setApiKey(k)} />;
 
@@ -195,31 +209,31 @@ export default function App() {
   const totalDiv   = portfolio.reduce((s,p) => s + p.value*(p.divYield/100), 0);
 
   /* ---------- helpers ---------- */
-  const updateHolding = (symbol, field, value) => {
-    const updated = { ...holdings, [symbol]: { ...(holdings[symbol] || { ziidi:0, faida:0, avgPrice: ALL_NSE_STOCKS.find(s=>s.symbol===symbol)?.price }), [field]: parseFloat(value) || 0 } };
-    setHoldings(updated); save("holdings", updated);
+  const updateHolding = (symbol, field, val) => {
+    const updated = { ...holdings, [symbol]: { ...(holdings[symbol] || { ziidi:0, faida:0, avgPrice: ALL_NSE_STOCKS.find(s=>s.symbol===symbol)?.price }), [field]: parseFloat(val) || 0 } };
+    setHoldings(updated); saveToStorage("holdings", updated);
   };
 
   const toggleWatch = (symbol) => {
     const updated = watchlist.includes(symbol) ? watchlist.filter(s=>s!==symbol) : [...watchlist, symbol];
-    setWatchlist(updated); save("watchlist", updated);
+    setWatchlist(updated); saveToStorage("watchlist", updated);
   };
 
   const addAlert = () => {
     if (!newAlert.targetPrice) return;
     const updated = [...priceAlerts, { ...newAlert, id:Date.now(), active:true, created:new Date().toLocaleDateString("en-KE") }];
-    setPriceAlerts(updated); save("priceAlerts", updated);
-    notify(`Alert set for ${newAlert.symbol} ${newAlert.direction} KES ${newAlert.targetPrice}`);
+    setPriceAlerts(updated); saveToStorage("priceAlerts", updated);
+    notifyUser(`Alert set for ${newAlert.symbol} ${newAlert.direction} KES ${newAlert.targetPrice}`);
   };
 
-  const removeAlert = (id) => { const u = priceAlerts.filter(a=>a.id!==id); setPriceAlerts(u); save("priceAlerts",u); };
+  const removeAlert = (id) => { const u = priceAlerts.filter(a=>a.id!==id); setPriceAlerts(u); saveToStorage("priceAlerts",u); };
 
   const addJournal = () => {
     if (!journalText.trim()) return;
     const updated = [{ id:Date.now(), text:journalText, date:new Date().toLocaleDateString("en-KE",{day:"numeric",month:"short",year:"numeric"}), time:new Date().toLocaleTimeString("en-KE",{hour:"2-digit",minute:"2-digit"}) }, ...journalEntries];
-    setJournalEntries(updated); save("journal", updated); setJournalText(""); notify("Trade note saved!");
+    setJournalEntries(updated); saveToStorage("journal", updated); setJournalText(""); notifyUser("Trade note saved!");
   };
-  const deleteJournal = (id) => { const u = journalEntries.filter(j=>j.id!==id); setJournalEntries(u); save("journal",u); };
+  const deleteJournal = (id) => { const u = journalEntries.filter(j=>j.id!==id); setJournalEntries(u); saveToStorage("journal",u); };
 
   /* ---------- AI ---------- */
   const callAI = async (prompt, mode, stockSym="") => {
@@ -227,8 +241,13 @@ export default function App() {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers:{ "Content-Type":"application/json", "x-api-key": apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
-        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, messages:[{ role:"user", content:prompt }] })
+        headers:{ 
+          "Content-Type":"application/json", 
+          "x-api-key": apiKey, 
+          "anthropic-version":"2023-06-01", 
+          "anthropic-dangerous-direct-browser-access":"true" // Header Fix 1
+        },
+        body: JSON.stringify({ model:"claude-3-5-sonnet-20240620", max_tokens:1000, messages:[{ role:"user", content:prompt }] })
       });
       const data = await res.json();
       const text = data.content?.map(c=>c.text||"").join("") || "Analysis unavailable.";
@@ -243,9 +262,15 @@ export default function App() {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers:{ "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+        headers:{ 
+          "Content-Type":"application/json", 
+          "x-api-key":apiKey, 
+          "anthropic-version":"2023-06-01", 
+          "anthropic-dangerous-direct-browser-access":"true", // Header Fix 1
+          "anthropic-beta": "web-search-2025-03-05" // Header Fix 2
+        },
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1500,
+          model:"claude-3-5-sonnet-20240620", max_tokens:1500,
           tools:[{ "type":"web_search_20250305","name":"web_search" }],
           messages:[{ role:"user", content:`Search for the latest NSE Kenya stock market news from today or this week (March 2026). Include news about Safaricom, Equity Bank, KCB, EABL, and general NSE market trends. Return a JSON array of 6 news items. Fields: title, source, summary (2 sentences max), sentiment (positive/negative/neutral), symbol (relevant NSE stock symbol or "NSE"), date. Return ONLY the JSON array, no markdown fences.` }]
         })
@@ -258,15 +283,15 @@ export default function App() {
   };
 
   /* ---------- derived chart data ---------- */
-  const hist     = getHistory(selectedStock.symbol);
-  const rsi      = calcRSI(hist);
-  const { signal, score, reasons, vol } = getSignal(selectedStock, hist, rsi);
-  const smaHist  = calcSMA(hist, 20);
-  const bollHist = calcBollinger(hist, 20);
-  const signalStyle = SIGNAL_STYLE[signal] || SIGNAL_STYLE["HOLD"];
+  const currentHist = getHistoryCached(selectedStock.symbol);
+  const currentRsi  = calcRSI(currentHist);
+  const sigResults  = getSignal(selectedStock, currentHist, currentRsi);
+  const smaData     = calcSMA(currentHist, 20);
+  const bollData    = calcBollinger(currentHist, 20);
+  const sigStyle    = SIGNAL_STYLE[sigResults.signal] || SIGNAL_STYLE["HOLD"];
 
-  const sectorData = portfolio.reduce((acc,p) => { acc[p.sector]=(acc[p.sector]||0)+p.value; return acc; }, {});
-  const sectorPie  = Object.entries(sectorData).map(([name,value]) => ({ name, value:parseFloat(value.toFixed(0)), color:SECTOR_COLORS[name]||"#64748b" }));
+  const sectorDataMap = portfolio.reduce((acc,p) => { acc[p.sector]=(acc[p.sector]||0)+p.value; return acc; }, {});
+  const sectorPieData = Object.entries(sectorDataMap).map(([name,value]) => ({ name, value:parseFloat(value.toFixed(0)), color:SECTOR_COLORS[name]||"#64748b" }));
 
   const portfolioHistData = portfolio.length > 0 ? Array.from({length:30},(_,i)=>{
     const d=new Date(); d.setDate(d.getDate()-(29-i));
@@ -276,9 +301,6 @@ export default function App() {
 
   const watchlistStocks = ALL_NSE_STOCKS.filter(s=>watchlist.includes(s.symbol));
 
-  /* ================================================================
-     RENDER
-  ================================================================ */
   return (
     <div style={{ fontFamily:"'Georgia',serif", background:"#060a12", minHeight:"100vh", color:"#e2e8f0", position:"relative" }}>
       <style>{`
@@ -300,7 +322,7 @@ export default function App() {
 
       {/* Notification toast */}
       {notification && (
-        <div className="slide" style={{position:"fixed",top:16,right:16,zIndex:9999,background:notification.type==="alert"?"#7c2d12":"#052e16",border:`1px solid ${notification.type==="alert"?"#ea580c":"#16a34a"}`,borderRadius:10,padding:"12px 20px",color:"#f1f5f9",fontSize:13,maxWidth:340,fontFamily:"'Source Sans 3',sans-serif",boxShadow:"0 8px 32px #00000080"}}>
+        <div className="slide" style={{position:"fixed",top:16,right:16,zIndex:9999,background:notification.type==="alert"?"#7c2d12":"#052e16",border:`1px solid ${notification.type==="alert"?"#ea580c":notification.type==="success"?"#16a34a":"#475569"}`,borderRadius:10,padding:"12px 20px",color:"#f1f5f9",fontSize:13,maxWidth:340,fontFamily:"'Source Sans 3',sans-serif",boxShadow:"0 8px 32px #00000080"}}>
           {notification.msg}
         </div>
       )}
@@ -358,9 +380,9 @@ export default function App() {
               </div>
               <div style={{background:"#0a1628",borderRadius:12,padding:16,border:"1px solid #0e2040"}}>
                 <div style={{fontSize:10,color:"#475569",marginBottom:8,fontFamily:"'Source Sans 3',sans-serif",letterSpacing:1,textTransform:"uppercase"}}>Sector Split</div>
-                {sectorPie.length>0?(
-                  <><ResponsiveContainer width="100%" height={120}><PieChart><Pie data={sectorPie} cx="50%" cy="50%" innerRadius={35} outerRadius={55} dataKey="value" paddingAngle={3}>{sectorPie.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10}} formatter={v=>[`KES ${v.toLocaleString()}`,]}/></PieChart></ResponsiveContainer>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:4}}>{sectorPie.map(s=><span key={s.name} style={{fontSize:9,color:s.color,fontFamily:"'Source Sans 3',sans-serif"}}>● {s.name}</span>)}</div></>
+                {sectorPieData.length>0?(
+                  <><ResponsiveContainer width="100%" height={120}><PieChart><Pie data={sectorPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} dataKey="value" paddingAngle={3}>{sectorPieData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10}} formatter={v=>[`KES ${v.toLocaleString()}`,]}/></PieChart></ResponsiveContainer>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:4}}>{sectorPieData.map(s=><span key={s.name} style={{fontSize:9,color:s.color,fontFamily:"'Source Sans 3',sans-serif"}}>● {s.name}</span>)}</div></>
                 ):<div style={{height:150,display:"flex",alignItems:"center",justifyContent:"center",color:"#334155",fontSize:11,fontFamily:"'Source Sans 3',sans-serif",textAlign:"center"}}>Add holdings to see sector split</div>}
               </div>
             </div>
@@ -379,7 +401,7 @@ export default function App() {
               ):(
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
                   <thead><tr style={{background:"#060a12"}}>{["Stock","Ziidi","Faida","Total","Avg Price","Value","P&L","Div/yr","Signal"].map(h=><th key={h} style={{textAlign:"left",padding:"7px 13px",fontSize:9,color:"#334155",fontFamily:"'Source Sans 3',sans-serif",letterSpacing:.5,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-                  <tbody>{portfolio.map(p=>{const ph=getHistory(p.symbol);const pr=calcRSI(ph);const ps=getSignal(p,ph,pr);const ss=SIGNAL_STYLE[ps.signal]||SIGNAL_STYLE["HOLD"];return(
+                  <tbody>{portfolio.map(p=>{const ph=getHistoryCached(p.symbol);const pr=calcRSI(ph);const ps=getSignal(p,ph,pr);const ss=SIGNAL_STYLE[ps.signal]||SIGNAL_STYLE["HOLD"];return(
                     <tr key={p.symbol} className="hr" style={{borderBottom:"1px solid #060a12",cursor:"pointer"}} onClick={()=>{setSelectedStock(ALL_NSE_STOCKS.find(s=>s.symbol===p.symbol));setPage("market");}}>
                       <td style={{padding:"11px 13px"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:p.color,fontWeight:700}}>{p.symbol}</div><div style={{fontSize:9,color:"#475569",fontFamily:"'Source Sans 3',sans-serif"}}>{p.name.substring(0,18)}</div></td>
                       <td style={{padding:"11px 13px",fontSize:12,color:"#4ade80",fontFamily:"'Source Sans 3',sans-serif"}}>{p.ziidi||0}</td>
@@ -401,7 +423,7 @@ export default function App() {
             <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",padding:16}}>
               <div style={{fontSize:10,color:"#475569",letterSpacing:1,textTransform:"uppercase",marginBottom:12,fontFamily:"'Source Sans 3',sans-serif"}}>Watchlist</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
-                {watchlistStocks.map(s=>{const sh=getHistory(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
+                {watchlistStocks.map(s=>{const sh=getHistoryCached(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
                   <div key={s.symbol} className="sc" style={{"--c":s.color,background:"#060a12",borderRadius:10,padding:12,border:"1px solid #0e2040",cursor:"pointer"}} onClick={()=>{setSelectedStock(s);setPage("market");}}>
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:14,color:s.color,fontWeight:700}}>{s.symbol}</div>
                     <div style={{fontSize:9,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginBottom:5}}>{s.name.substring(0,15)}</div>
@@ -456,10 +478,9 @@ export default function App() {
         {/* ══════ MARKET ══════ */}
         {page==="market"&&(
           <div className="slide" style={{display:"grid",gridTemplateColumns:"260px 1fr",gap:14}}>
-            {/* Stock list */}
             <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",overflow:"hidden",maxHeight:"calc(100vh - 80px)",overflowY:"auto"}}>
               <div style={{padding:"10px 13px",borderBottom:"1px solid #0e2040",fontSize:10,color:"#475569",letterSpacing:1,textTransform:"uppercase",fontFamily:"'Source Sans 3',sans-serif"}}>NSE Stocks</div>
-              {ALL_NSE_STOCKS.map(s=>{const sh=getHistory(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
+              {ALL_NSE_STOCKS.map(s=>{const sh=getHistoryCached(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
                 <div key={s.symbol} className="hr" onClick={()=>setSelectedStock(s)} style={{padding:"9px 13px",cursor:"pointer",borderBottom:"1px solid #060a12",borderLeft:`3px solid ${selectedStock.symbol===s.symbol?s.color:"transparent"}`,background:selectedStock.symbol===s.symbol?"#0d1f35":"transparent"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div><span style={{fontFamily:"'Cinzel',serif",fontSize:12,color:s.color,fontWeight:700}}>{s.symbol}</span><span style={{fontSize:9,color:"#334155",marginLeft:5,fontFamily:"'Source Sans 3',sans-serif"}}>{s.sector}</span></div>
@@ -473,7 +494,6 @@ export default function App() {
               );})}
             </div>
 
-            {/* Detail panel */}
             <div>
               <div style={{background:"#0a1628",borderRadius:12,padding:"14px 18px",border:"1px solid #0e2040",marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -489,27 +509,25 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-                    <div style={{padding:"8px 16px",borderRadius:10,background:signalStyle.bg,border:`2px solid ${signalStyle.border}`,textAlign:"center"}}>
+                    <div style={{padding:"8px 16px",borderRadius:10,background:sigStyle.bg,border:`2px solid ${sigStyle.border}`,textAlign:"center"}}>
                       <div style={{fontSize:8,color:"#475569",letterSpacing:2,fontFamily:"'Source Sans 3',sans-serif"}}>SIGNAL</div>
-                      <div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:signalStyle.color,fontWeight:700}}>{signal}</div>
+                      <div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:sigStyle.color,fontWeight:700}}>{sigResults.signal}</div>
                     </div>
                     <button onClick={()=>toggleWatch(selectedStock.symbol)} style={{fontSize:11,background:"transparent",border:"1px solid #1e3a5f",borderRadius:6,color:watchlist.includes(selectedStock.symbol)?"#fbbf24":"#475569",padding:"3px 10px"}}>{watchlist.includes(selectedStock.symbol)?"⭐ Watching":"☆ Watch"}</button>
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:7,marginTop:12}}>
-                  {[["RSI",rsi,rsi<35?"#34d399":rsi>65?"#f87171":"#94a3b8"],["Volatility",vol+"%",vol<30?"#34d399":vol>50?"#f87171":"#fbbf24"],["P/E",selectedStock.pe||"N/A","#94a3b8"],["Div Yield",selectedStock.divYield+"%","#a78bfa"],["52W High","KES "+selectedStock.high52,"#94a3b8"],["52W Low","KES "+selectedStock.low52,"#94a3b8"]].map(([l,v,c])=>(
+                  {[["RSI",currentRsi,currentRsi<35?"#34d399":currentRsi>65?"#f87171":"#94a3b8"],["Volatility",sigResults.vol+"%",sigResults.vol<30?"#34d399":sigResults.vol>50?"#f87171":"#fbbf24"],["P/E",selectedStock.pe||"N/A","#94a3b8"],["Div Yield",selectedStock.divYield+"%","#a78bfa"],["52W High","KES "+selectedStock.high52,"#94a3b8"],["52W Low","KES "+selectedStock.low52,"#94a3b8"]].map(([l,v,c])=>(
                     <div key={l} style={{background:"#060a12",borderRadius:7,padding:"7px 9px"}}><div style={{fontSize:8,color:"#334155",textTransform:"uppercase",letterSpacing:.5,fontFamily:"'Source Sans 3',sans-serif"}}>{l}</div><div style={{fontSize:13,fontWeight:700,color:c,fontFamily:"'Cinzel',serif",marginTop:1}}>{v}</div></div>
                   ))}
                 </div>
               </div>
 
-              {/* Signal reasons */}
               <div style={{background:"#0a1628",borderRadius:10,padding:"10px 14px",border:"1px solid #0e2040",marginBottom:10,display:"flex",flexWrap:"wrap",gap:6}}>
-                {reasons.map(r=>{const pos=r.includes("↑")||r.includes("Low")||r.includes("Oversold")||r.includes("Above")||r.includes("value")||r.includes("yield")||r.includes("near");const neg=r.includes("↓")||r.includes("High vol")||r.includes("Overbought")||r.includes("Below")||r.includes("pressure");return <span key={r} style={{fontSize:10,padding:"2px 9px",borderRadius:20,background:pos?"#052e16":neg?"#450a0a":"#1e293b",color:pos?"#4ade80":neg?"#f87171":"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>{r}</span>;})}
-                {reasons.length===0&&<span style={{color:"#334155",fontSize:11,fontFamily:"'Source Sans 3',sans-serif"}}>Neutral — no strong signal</span>}
+                {sigResults.reasons.map(r=>{const pos=r.includes("↑")||r.includes("Low")||r.includes("Oversold")||r.includes("Above")||r.includes("value")||r.includes("yield")||r.includes("near");const neg=r.includes("↓")||r.includes("High vol")||r.includes("Overbought")||r.includes("Below")||r.includes("pressure");return <span key={r} style={{fontSize:10,padding:"2px 9px",borderRadius:20,background:pos?"#052e16":neg?"#450a0a":"#1e293b",color:pos?"#4ade80":neg?"#f87171":"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>{r}</span>;})}
+                {sigResults.reasons.length===0&&<span style={{color:"#334155",fontSize:11,fontFamily:"'Source Sans 3',sans-serif"}}>Neutral — no strong signal</span>}
               </div>
 
-              {/* Charts */}
               <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",overflow:"hidden",marginBottom:10}}>
                 <div style={{display:"flex",borderBottom:"1px solid #0e2040"}}>
                   {[["price","Price+MA"],["bollinger","Bollinger"],["volume","Volume"],["rsi","RSI"]].map(([k,l])=>(
@@ -519,23 +537,22 @@ export default function App() {
                   ))}
                 </div>
                 <div style={{padding:14}}>
-                  {chartType==="price"&&<ResponsiveContainer width="100%" height={180}><AreaChart data={smaHist}><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={selectedStock.color} stopOpacity={0.2}/><stop offset="100%" stopColor={selectedStock.color} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#0e2040"/><XAxis dataKey="date" tick={{fontSize:8,fill:"#334155"}} interval={8}/><YAxis tick={{fontSize:8,fill:"#334155"}} domain={["auto","auto"]}/><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10,fontFamily:"'Source Sans 3',sans-serif"}}/><Area type="monotone" dataKey="price" stroke={selectedStock.color} strokeWidth={2} fill="url(#cg)" name="Price"/><Line type="monotone" dataKey="sma" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name="20-Day MA"/></AreaChart></ResponsiveContainer>}
-                  {chartType==="bollinger"&&<ResponsiveContainer width="100%" height={180}><AreaChart data={bollHist}><CartesianGrid strokeDasharray="3 3" stroke="#0e2040"/><XAxis dataKey="date" tick={{fontSize:8,fill:"#334155"}} interval={8}/><YAxis tick={{fontSize:8,fill:"#334155"}} domain={["auto","auto"]}/><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10}}/><Area type="monotone" dataKey="upper" stroke="#ef444460" fill="#ef444410" strokeWidth={1} name="Upper"/><Area type="monotone" dataKey="price" stroke={selectedStock.color} strokeWidth={2} fill={selectedStock.color+"15"} name="Price"/><Line type="monotone" dataKey="lower" stroke="#34d39960" dot={false} strokeWidth={1} name="Lower"/></AreaChart></ResponsiveContainer>}
-                  {chartType==="volume"&&<ResponsiveContainer width="100%" height={180}><BarChart data={hist}><CartesianGrid strokeDasharray="3 3" stroke="#0e2040"/><XAxis dataKey="date" tick={{fontSize:8,fill:"#334155"}} interval={8}/><YAxis tick={{fontSize:8,fill:"#334155"}} tickFormatter={v=>(v/1000).toFixed(0)+"K"}/><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10}} formatter={v=>[v.toLocaleString(),"Volume"]}/><Bar dataKey="volume" fill={selectedStock.color+"80"} radius={[2,2,0,0]}/></BarChart></ResponsiveContainer>}
-                  {chartType==="rsi"&&<div style={{padding:"8px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>RSI (14-period)</span><span style={{fontFamily:"'Cinzel',serif",fontSize:20,color:rsi<35?"#34d399":rsi>65?"#f87171":"#fbbf24",fontWeight:700}}>{rsi}</span></div><div style={{height:24,background:"#060a12",borderRadius:12,overflow:"hidden",position:"relative",marginBottom:6}}><div style={{position:"absolute",left:"35%",top:0,bottom:0,width:1,background:"#34d39940"}}/><div style={{position:"absolute",left:"65%",top:0,bottom:0,width:1,background:"#f8717140"}}/><div style={{height:"100%",width:rsi+"%",background:`linear-gradient(90deg,#34d399,${rsi<35?"#34d399":rsi>65?"#f87171":"#fbbf24"})`,borderRadius:12,transition:"width .8s"}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#334155",fontFamily:"'Source Sans 3',sans-serif",marginBottom:12}}><span>Oversold (0)</span><span>(100) Overbought</span></div><div style={{padding:10,background:"#060a12",borderRadius:7,fontSize:11,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif",lineHeight:1.6}}>{rsi<35&&<><strong style={{color:"#34d399"}}>Oversold</strong> — potential buy opportunity.</>}{rsi>65&&<><strong style={{color:"#f87171"}}>Overbought</strong> — consider waiting before buying more.</>}{rsi>=35&&rsi<=65&&<><strong style={{color:"#fbbf24"}}>Neutral</strong> — use other indicators to decide.</>}</div></div>}
+                  {chartType==="price"&&<ResponsiveContainer width="100%" height={180}><AreaChart data={smaData}><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={selectedStock.color} stopOpacity={0.2}/><stop offset="100%" stopColor={selectedStock.color} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#0e2040"/><XAxis dataKey="date" tick={{fontSize:8,fill:"#334155"}} interval={8}/><YAxis tick={{fontSize:8,fill:"#334155"}} domain={["auto","auto"]}/><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10,fontFamily:"'Source Sans 3',sans-serif"}}/><Area type="monotone" dataKey="price" stroke={selectedStock.color} strokeWidth={2} fill="url(#cg)" name="Price"/><Line type="monotone" dataKey="sma" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name="20-Day MA"/></AreaChart></ResponsiveContainer>}
+                  {chartType==="bollinger"&&<ResponsiveContainer width="100%" height={180}><AreaChart data={bollData}><CartesianGrid strokeDasharray="3 3" stroke="#0e2040"/><XAxis dataKey="date" tick={{fontSize:8,fill:"#334155"}} interval={8}/><YAxis tick={{fontSize:8,fill:"#334155"}} domain={["auto","auto"]}/><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10}}/><Area type="monotone" dataKey="upper" stroke="#ef444460" fill="#ef444410" strokeWidth={1} name="Upper"/><Area type="monotone" dataKey="price" stroke={selectedStock.color} strokeWidth={2} fill={selectedStock.color+"15"} name="Price"/><Line type="monotone" dataKey="lower" stroke="#34d39960" dot={false} strokeWidth={1} name="Lower"/></AreaChart></ResponsiveContainer>}
+                  {chartType==="volume"&&<ResponsiveContainer width="100%" height={180}><BarChart data={currentHist}><CartesianGrid strokeDasharray="3 3" stroke="#0e2040"/><XAxis dataKey="date" tick={{fontSize:8,fill:"#334155"}} interval={8}/><YAxis tick={{fontSize:8,fill:"#334155"}} tickFormatter={v=>(v/1000).toFixed(0)+"K"}/><Tooltip contentStyle={{background:"#0d1f35",border:"1px solid #0e2040",fontSize:10}} formatter={v=>[v.toLocaleString(),"Volume"]}/><Bar dataKey="volume" fill={selectedStock.color+"80"} radius={[2,2,0,0]}/></BarChart></ResponsiveContainer>}
+                  {chartType==="rsi"&&<div style={{padding:"8px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>RSI (14-period)</span><span style={{fontFamily:"'Cinzel',serif",fontSize:20,color:currentRsi<35?"#34d399":currentRsi>65?"#f87171":"#fbbf24",fontWeight:700}}>{currentRsi}</span></div><div style={{height:24,background:"#060a12",borderRadius:12,overflow:"hidden",position:"relative",marginBottom:6}}><div style={{position:"absolute",left:"35%",top:0,bottom:0,width:1,background:"#34d39940"}}/><div style={{position:"absolute",left:"65%",top:0,bottom:0,width:1,background:"#f8717140"}}/><div style={{height:"100%",width:currentRsi+"%",background:`linear-gradient(90deg,#34d399,${currentRsi<35?"#34d399":currentRsi>65?"#f87171":"#fbbf24"})`,borderRadius:12,transition:"width .8s"}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#334155",fontFamily:"'Source Sans 3',sans-serif",marginBottom:12}}><span>Oversold (0)</span><span>(100) Overbought</span></div><div style={{padding:10,background:"#060a12",borderRadius:7,fontSize:11,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif",lineHeight:1.6}}>{currentRsi<35&&<><strong style={{color:"#34d399"}}>Oversold</strong> — potential buy opportunity.</>}{currentRsi>65&&<><strong style={{color:"#f87171"}}>Overbought</strong> — consider waiting before buying more.</>}{currentRsi>=35&&currentRsi<=65&&<><strong style={{color:"#fbbf24"}}>Neutral</strong> — use other indicators to decide.</>}</div></div>}
                 </div>
               </div>
 
-              {/* AI */}
               <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",padding:14}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <span style={{fontSize:10,color:"#475569",letterSpacing:1,textTransform:"uppercase",fontFamily:"'Source Sans 3',sans-serif"}}>🤖 AI Advisor</span>
                   <div style={{display:"flex",gap:6}}>
                     {[["deep","Deep Analysis"],["buy","Buy Now?"],["risk","Risk Check"]].map(([m,l])=>(
                       <button key={m} onClick={()=>callAI(
-                        m==="deep"?`Analyse ${selectedStock.name} (${selectedStock.symbol}) on NSE Kenya for a beginner investor. Price: KES ${selectedStock.price} (${selectedStock.change}%), P/E: ${selectedStock.pe||"N/A"}, Div: ${selectedStock.divYield}%, RSI: ${rsi}, Volatility: ${vol}%. Signal: ${signal}. Write 4 plain-language paragraphs: fundamentals, statistics, valuation vs peers, 12-month outlook.`:
-                        m==="buy"?`I'm a beginner NSE investor in Nairobi. Should I buy ${selectedStock.name} (${selectedStock.symbol}) at KES ${selectedStock.price}? RSI: ${rsi}, Signal: ${signal}. Give a direct YES/NO/WAIT first, then explain in 3 sentences. Practical Kenyan financial advisor tone.`:
-                        `Top 3 risks of investing in ${selectedStock.name} (${selectedStock.symbol}) right now. Price KES ${selectedStock.price}, volatility ${vol}%, RSI ${rsi}. For a beginner. One risk + mitigation each. Short and practical.`,
+                        m==="deep"?`Analyse ${selectedStock.name} (${selectedStock.symbol}) on NSE Kenya for a beginner investor. Price: KES ${selectedStock.price} (${selectedStock.change}%), P/E: ${selectedStock.pe||"N/A"}, Div: ${selectedStock.divYield}%, RSI: ${currentRsi}, Volatility: ${sigResults.vol}%. Signal: ${sigResults.signal}. Write 4 plain-language paragraphs: fundamentals, statistics, valuation vs peers, 12-month outlook.`:
+                        m==="buy"?`I'm a beginner NSE investor in Nairobi. Should I buy ${selectedStock.name} (${selectedStock.symbol}) at KES ${selectedStock.price}? RSI: ${currentRsi}, Signal: ${sigResults.signal}. Give a direct YES/NO/WAIT first, then explain in 3 sentences. Practical Kenyan financial advisor tone.`:
+                        `Top 3 risks of investing in ${selectedStock.name} (${selectedStock.symbol}) right now. Price KES ${selectedStock.price}, volatility ${sigResults.vol}%, RSI ${currentRsi}. For a beginner. One risk + mitigation each. Short and practical.`,
                         m, selectedStock.symbol
                       )} style={{padding:"4px 11px",background:aiState.mode===m&&aiState.stock===selectedStock.symbol?"#1e3a5f":"transparent",border:"1px solid #1e3a5f",borderRadius:6,color:aiState.mode===m&&aiState.stock===selectedStock.symbol?"#38bdf8":"#475569",fontSize:11}}>
                         {l}
@@ -592,16 +609,16 @@ export default function App() {
             </div>
             {priceAlerts.length>0?(
               <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",overflow:"hidden"}}>
-                {priceAlerts.map(alert=>{const stock=ALL_NSE_STOCKS.find(s=>s.symbol===alert.symbol);const triggered=stock&&(alert.direction==="above"?stock.price>=parseFloat(alert.targetPrice):stock.price<=parseFloat(alert.targetPrice));return(
-                  <div key={alert.id} className="hr" style={{padding:"13px 18px",borderBottom:"1px solid #060a12",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                {priceAlerts.map(alertItem=>{const stock=ALL_NSE_STOCKS.find(s=>s.symbol===alertItem.symbol);const triggered=stock&&(alertItem.direction==="above"?stock.price>=parseFloat(alertItem.targetPrice):stock.price<=parseFloat(alertItem.targetPrice));return(
+                  <div key={alertItem.id} className="hr" style={{padding:"13px 18px",borderBottom:"1px solid #060a12",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                     <div style={{display:"flex",alignItems:"center",gap:12}}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:triggered?"#f59e0b":"#1e3a5f",boxShadow:triggered?"0 0 8px #f59e0b":""}} className={triggered?"pulse":""}/>
-                      <div><span style={{fontFamily:"'Cinzel',serif",fontSize:13,color:stock?.color||"#94a3b8",fontWeight:700}}>{alert.symbol}</span><span style={{fontSize:11,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginLeft:8}}>{alert.direction==="above"?"rises above":"drops below"} KES {alert.targetPrice}</span></div>
+                      <div><span style={{fontFamily:"'Cinzel',serif",fontSize:13,color:stock?.color||"#94a3b8",fontWeight:700}}>{alertItem.symbol}</span><span style={{fontSize:11,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginLeft:8}}>{alertItem.direction==="above"?"rises above":"drops below"} KES {alertItem.targetPrice}</span></div>
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:14}}>
                       <span style={{fontSize:11,color:triggered?"#f59e0b":"#334155",fontFamily:"'Source Sans 3',sans-serif"}}>{triggered?"🔔 TRIGGERED — Now: KES "+stock?.price:`Current: KES ${stock?.price||"?"}`}</span>
-                      <span style={{fontSize:9,color:"#334155",fontFamily:"'Source Sans 3',sans-serif"}}>Set {alert.created}</span>
-                      <button onClick={()=>removeAlert(alert.id)} style={{background:"transparent",border:"1px solid #450a0a",borderRadius:5,color:"#f87171",padding:"2px 9px",fontSize:10}}>Remove</button>
+                      <span style={{fontSize:9,color:"#334155",fontFamily:"'Source Sans 3',sans-serif"}}>Set {alertItem.created}</span>
+                      <button onClick={()=>removeAlert(alertItem.id)} style={{background:"transparent",border:"1px solid #450a0a",borderRadius:5,color:"#f87171",padding:"2px 9px",fontSize:10}}>Remove</button>
                     </div>
                   </div>
                 );})}
@@ -633,7 +650,7 @@ export default function App() {
         {page==="learn"&&(
           <div className="slide">
             <div style={{fontFamily:"'Cinzel',serif",fontSize:20,color:"#38bdf8",fontWeight:700,marginBottom:4}}>Investor's Guide</div>
-            <div style={{fontSize:11,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginBottom:18}}>Everything a beginner Kenyan investor needs to know</div>
+            <div style={{fontSize:12,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginBottom:20}}>Everything a beginner Kenyan investor needs to know</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
               {[
                 {icon:"📱",title:"Using Ziidi",color:"#22c55e",items:["Open M-Pesa → Financial Services → Ziidi","Complete KYC with National ID + selfie","Deposit from M-Pesa — minimum KES 100","Search stock e.g. SCOM, CIC, BRIT, COOP","Tap Buy → enter shares → confirm","Trading hours: 9:00 AM – 3:00 PM Mon–Fri","Dividends paid directly to M-Pesa"]},
@@ -661,7 +678,6 @@ export default function App() {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
