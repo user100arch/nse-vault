@@ -169,15 +169,15 @@ export default function App() {
   const [journalText, setJournalText] = useState("");
   const histCache = useRef({});
 
-  if (!apiKey) return <ApiKeyGate onKey={k => setApiKey(k)} />;
-
-  const save = (key, val) => { storage.set(key, val); };
-  const notify = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
-
   const getHistory = useCallback((symbol) => {
     if (!histCache.current[symbol]) histCache.current[symbol] = genHistory(ALL_NSE_STOCKS.find(s => s.symbol === symbol)?.price || 50);
     return histCache.current[symbol];
   }, []);
+
+  const save = (key, val) => { storage.set(key, val); };
+  const notify = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
+
+  if (!apiKey) return <ApiKeyGate onKey={k => setApiKey(k)} />;
 
   /* ---------- portfolio maths ---------- */
   const portfolio = ALL_NSE_STOCKS.map(s => {
