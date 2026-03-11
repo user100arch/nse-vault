@@ -121,38 +121,28 @@ const SIGNAL_STYLE = {
 };
 
 /* ================================================================
-   ANTHROPIC API KEY INPUT
+   AI HELPER — uses the built-in Claude API (no key needed)
 ================================================================ */
-function ApiKeyGate({ onKey }) {
-  const [val, setVal] = useState("");
-  const saved = storage.get("anthropic_key");
-  if (saved) { onKey(saved); return null; }
-  return (
-    <div style={{ minHeight:"100vh", background:"#060a12", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Georgia',serif" }}>
-      <div style={{ background:"#0a1628", border:"1px solid #1e3a5f", borderRadius:16, padding:"40px 36px", maxWidth:440, width:"100%", textAlign:"center" }}>
-        <div style={{ fontSize:32, marginBottom:8 }}>🇰🇪</div>
-        <div style={{ fontFamily:"Georgia,serif", fontSize:26, fontWeight:700, color:"#38bdf8", marginBottom:6, letterSpacing:2 }}>NSE VAULT</div>
-        <div style={{ fontSize:12, color:"#475569", marginBottom:24 }}>Enter your Anthropic API key to enable AI analysis &amp; live news</div>
-        <input type="password" placeholder="sk-ant-api03-..." value={val} onChange={e => setVal(e.target.value)}
-          style={{ width:"100%", background:"#060a12", border:"1px solid #1e3a5f", borderRadius:8, padding:"11px 14px", color:"#e2e8f0", fontSize:13, boxSizing:"border-box", marginBottom:12 }}/>
-        <button onClick={() => { if (val.startsWith("sk-ant")) { storage.set("anthropic_key", val); onKey(val); } else alert("Paste a valid Anthropic API key (starts with sk-ant)"); }}
-          style={{ width:"100%", padding:"12px", background:"linear-gradient(135deg,#0369a1,#0d9488)", border:"none", borderRadius:10, color:"#fff", fontSize:14, cursor:"pointer", fontWeight:600 }}>
-          Enter NSE Vault →
-        </button>
-        <div style={{ fontSize:10, color:"#334155", marginTop:14 }}>
-          Get a free API key at <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" style={{ color:"#38bdf8" }}>console.anthropic.com</a><br/>
-          Key is stored locally in your browser only.
-        </div>
-      </div>
-    </div>
-  );
+async function claudeCall(messages, tools = null) {
+  const body = { model:"claude-haiku-4-5-20251001", max_tokens:1500, messages };
+  if (tools) body.tools = tools;
+  const headers = {
+    "Content-Type":"application/json",
+    "anthropic-version":"2023-06-01",
+    "anthropic-dangerous-direct-browser-access":"true",
+  };
+  if (tools) headers["anthropic-beta"] = "web-search-2025-03-05";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST", headers,
+    body: JSON.stringify(body)
+  });
+  return res.json();
 }
 
 /* ================================================================
    MAIN APP
 ================================================================ */
 export default function App() {
-  const [apiKey, setApiKey] = useState(() => process.env.REACT_APP_ANTHROPIC_KEY || storage.get("anthropic_key") || "");
   const [page, setPage] = useState("dashboard");
   const [holdings, setHoldings] = useState(() => storage.get("holdings") || {});
   const [watchlist, setWatchlist] = useState(() => storage.get("watchlist") || ["SCOM","EQTY","COOP","CIC","BRIT"]);
@@ -173,8 +163,6 @@ export default function App() {
     if (!histCache.current[symbol]) histCache.current[symbol] = genHistory(ALL_NSE_STOCKS.find(s => s.symbol === symbol)?.price || 50);
     return histCache.current[symbol];
   }, []);
-
-  if (!apiKey) return <ApiKeyGate onKey={k => setApiKey(k)} />;
 
   const save = (key, val) => { storage.set(key, val); };
   const notify = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
@@ -225,17 +213,12 @@ export default function App() {
   const callAI = async (prompt, mode, stockSym="") => {
     setAiState({ loading:true, text:"", stock:stockSym, mode });
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json", "x-api-key": apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
-        body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:1000, messages:[{ role:"user", content:prompt }] })
-      });
-      const data = await res.json();
-      if (data.error) { setAiState({ loading:false, text:`API Error: ${data.error.message}`, stock:stockSym, mode }); return; }
+      const data = await claudeCall([{ role:"user", content:prompt }]);
+      if (data.error) { setAiState({ loading:false, text:`Error: ${data.error.message}`, stock:stockSym, mode }); return; }
       const text = data.content?.filter(c=>c.type==="text").map(c=>c.text).join("") || "Analysis unavailable.";
       setAiState({ loading:false, text, stock:stockSym, mode });
     } catch(e) {
-      setAiState({ loading:false, text:`Connection error: ${e.message}. Check your API key and try again.`, stock:stockSym, mode });
+      setAiState({ loading:false, text:`Connection error: ${e.message}`, stock:stockSym, mode });
     }
   };
 
@@ -243,33 +226,23 @@ export default function App() {
     setNewsLoading(true); setNewsSearched(true);
     try {
       const userMsg = `Search for the latest NSE Kenya stock market news from today or this week (March 2026). Include news about Safaricom, Equity Bank, KCB, EABL, and general NSE market trends. Then return a JSON array of 6 news items with fields: title, source, summary (2 sentences max), sentiment (positive/negative/neutral), symbol (relevant NSE stock symbol or "NSE"), date. Return ONLY the JSON array, no markdown fences.`;
-      const headers = { "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true", "anthropic-beta":"web-search-2025-03-05" };
       const tools = [{ "type":"web_search_20250305","name":"web_search" }];
 
-      // First call — model may invoke web_search tool
-      const res1 = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST", headers,
-        body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:2000, tools, messages:[{ role:"user", content:userMsg }] })
-      });
-      const data1 = await res1.json();
+      // First call — model searches the web
+      const data1 = await claudeCall([{ role:"user", content:userMsg }], tools);
+      if (data1.error) { setNews([]); setNewsLoading(false); return; }
 
-      // If model stopped to use a tool, send results back for final answer
+      // If model used the tool, do a second call with the tool results included
       let finalContent = data1.content || [];
       if (data1.stop_reason === "tool_use") {
-        const assistantMsg = { role:"assistant", content: data1.content };
-        // Build tool_result blocks for every tool_use block
-        const toolResults = data1.content
+        const toolResults = (data1.content || [])
           .filter(b => b.type === "tool_use")
-          .map(b => ({ type:"tool_result", tool_use_id: b.id, content: JSON.stringify(b.input) }));
-        const res2 = await fetch("https://api.anthropic.com/v1/messages", {
-          method:"POST", headers,
-          body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:2000, tools, messages:[
-            { role:"user", content:userMsg },
-            assistantMsg,
-            { role:"user", content: toolResults }
-          ]})
-        });
-        const data2 = await res2.json();
+          .map(b => ({ type:"tool_result", tool_use_id: b.id, content: b.input ? JSON.stringify(b.input) : "" }));
+        const data2 = await claudeCall([
+          { role:"user", content:userMsg },
+          { role:"assistant", content: data1.content },
+          { role:"user", content: toolResults }
+        ], tools);
         finalContent = data2.content || [];
       }
 
