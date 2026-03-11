@@ -121,13 +121,12 @@ const SIGNAL_STYLE = {
 };
 
 /* ================================================================
-   AI HELPER — calls Vercel API routes (key is stored server-side)
+   MAIN APP
 ================================================================ */
-
-/* ================================================================
    MAIN APP
 ================================================================ */
 export default function App() {
+  const [apiKey, setApiKey] = useState(() => storage.get("anthropic_key") || "");
   const [page, setPage] = useState("dashboard");
   const [holdings, setHoldings] = useState(() => storage.get("holdings") || {});
   const [watchlist, setWatchlist] = useState(() => storage.get("watchlist") || ["SCOM","EQTY","COOP","CIC","BRIT"]);
@@ -151,6 +150,8 @@ export default function App() {
 
   const save = (key, val) => { storage.set(key, val); };
   const notify = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
+
+
 
   /* ---------- portfolio maths ---------- */
   const portfolio = ALL_NSE_STOCKS.map(s => {
@@ -194,7 +195,7 @@ export default function App() {
   };
   const deleteJournal = (id) => { const u = journalEntries.filter(j=>j.id!==id); setJournalEntries(u); save("journal",u); };
 
-  /* ---------- AI ---------- */
+  /* ---------- AI — calls secure Vercel API route ---------- */
   const callAI = async (prompt, mode, stockSym="") => {
     setAiState({ loading:true, text:"", stock:stockSym, mode });
     try {
@@ -204,21 +205,20 @@ export default function App() {
         body: JSON.stringify({ messages:[{ role:"user", content:prompt }] })
       });
       const data = await res.json();
-      if (data.error) { setAiState({ loading:false, text:`Error: ${data.error}`, stock:stockSym, mode }); return; }
-      const text = data.text || "Analysis unavailable.";
+      const text = data.text || data.error || "Analysis unavailable.";
       setAiState({ loading:false, text, stock:stockSym, mode });
-    } catch(e) {
-      setAiState({ loading:false, text:`Connection error: ${e.message}`, stock:stockSym, mode });
+    } catch {
+      setAiState({ loading:false, text:"Could not connect to AI advisor. Please try again.", stock:stockSym, mode });
     }
   };
 
   const fetchNews = async () => {
     setNewsLoading(true); setNewsSearched(true);
     try {
-      const res = await fetch("/api/news", { method:"POST" });
+      const res = await fetch("/api/news", { method:"POST", headers:{ "Content-Type":"application/json" } });
       const data = await res.json();
-      setNews(data.news || []);
-    } catch(e) { console.error("fetchNews error", e); setNews([]); }
+      setNews(Array.isArray(data.news) ? data.news : []);
+    } catch { setNews([]); }
     setNewsLoading(false);
   };
 
