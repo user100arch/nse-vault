@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer
 } from "recharts";
 
@@ -21,7 +21,7 @@ const storage = {
    NSE STOCK DATA  (prices as of March 2026)
 ================================================================ */
 const ALL_NSE_STOCKS = [
-  { symbol:"SCOM", name:"Safaricom PLC",            sector:"Telco",         price:24.15, change:3.17,  volume:30600000, pe:18.2, divYield:4.9, high52:28.50, low52:18.40, mktCap:"967B", color:"#22c55e" },
+  { symbol:"SCOM", name:"Safaricom PLC",           sector:"Telco",         price:24.15, change:3.17,  volume:30600000, pe:18.2, divYield:4.9, high52:28.50, low52:18.40, mktCap:"967B", color:"#22c55e" },
   { symbol:"EQTY", name:"Equity Group Holdings",    sector:"Banking",       price:77.00, change:4.05,  volume:3652097,  pe:6.1,  divYield:5.8, high52:80.00, low52:41.20, mktCap:"291B", color:"#10b981" },
   { symbol:"KCB",  name:"Kenya Commercial Bank",    sector:"Banking",       price:79.00, change:0.96,  volume:3950000,  pe:5.8,  divYield:6.2, high52:82.00, low52:44.00, mktCap:"254B", color:"#0ea5e9" },
   { symbol:"COOP", name:"Co-operative Bank",        sector:"Banking",       price:29.95, change:0.17,  volume:890000,   pe:7.2,  divYield:6.1, high52:32.00, low52:20.50, mktCap:"175B", color:"#38bdf8" },
@@ -36,7 +36,7 @@ const ALL_NSE_STOCKS = [
   { symbol:"CARB", name:"Carbacid Investments",     sector:"Manufacturing", price:29.30, change:-1.51, volume:27230,    pe:14.3, divYield:5.1, high52:35.00, low52:18.50, mktCap:"4B",   color:"#78716c" },
   { symbol:"JUB",  name:"Jubilee Holdings",         sector:"Insurance",     price:389.75,change:0.32,  volume:6200,     pe:9.5,  divYield:3.2, high52:420.0, low52:270.0, mktCap:"38B",  color:"#6366f1" },
   { symbol:"BRIT", name:"Britam Holdings",          sector:"Insurance",     price:11.95, change:1.70,  volume:373120,   pe:11.2, divYield:4.2, high52:14.00, low52:7.50,  mktCap:"31B",  color:"#3b82f6" },
-  { symbol:"CIC",  name:"CIC Insurance Group",      sector:"Insurance",     price:4.98,  change:-1.58, volume:205810,   pe:9.8,  divYield:3.1, high52:6.50,  low52:3.20,  mktCap:"9B",   color:"#8b5cf6" },
+  { symbol:"CIC",  name:"CIC Insurance Group",       sector:"Insurance",     price:4.98,  change:-1.58, volume:205810,   pe:9.8,  divYield:3.1, high52:6.50,  low52:3.20,  mktCap:"9B",   color:"#8b5cf6" },
   { symbol:"CTUM", name:"Centum Investment",        sector:"Investment",    price:14.30, change:-3.05, volume:15630,    pe:null, divYield:1.5, high52:19.50, low52:12.00, mktCap:"16B",  color:"#14b8a6" },
   { symbol:"SBIC", name:"Stanbic Holdings",         sector:"Banking",       price:257.00,change:0.00,  volume:12000,    pe:8.9,  divYield:5.6, high52:270.0, low52:188.0, mktCap:"102B", color:"#fb7185" },
 ];
@@ -93,23 +93,27 @@ function calcBollinger(data, period = 20) {
   });
 }
 
-function getSignal(stock, hist, rsi) {
+function getSignal(stock, hist, rsiValue) {
   const smaD = calcSMA(hist, 20); const lastSMA = smaD[smaD.length - 1]?.sma;
-  const vol = calcVolatility(hist); let score = 0, reasons = [];
-  if (stock.change > 1.5)  { score += 1; reasons.push("Strong momentum ↑"); }
-  if (stock.change < -1.5) { score -= 1; reasons.push("Selling pressure ↓"); }
-  if (rsi < 35)  { score += 2; reasons.push(`Oversold RSI ${rsi}`); }
-  else if (rsi < 45) { score += 1; reasons.push(`Near oversold RSI ${rsi}`); }
-  if (rsi > 65)  { score -= 2; reasons.push(`Overbought RSI ${rsi}`); }
-  if (stock.pe && stock.pe < 7)  { score += 2; reasons.push("Deep value P/E<7"); }
-  else if (stock.pe && stock.pe < 10) { score += 1; reasons.push("Value P/E<10"); }
-  if (stock.divYield > 5) { score += 1; reasons.push(`High yield ${stock.divYield}%`); }
-  if (lastSMA && stock.price > lastSMA * 1.01) { score += 1; reasons.push("Above 20-day MA"); }
-  if (lastSMA && stock.price < lastSMA * 0.99) { score -= 1; reasons.push("Below 20-day MA"); }
-  if (vol < 30) { score += 1; reasons.push("Low volatility"); }
-  if (vol > 55) { score -= 1; reasons.push("High volatility risk"); }
-  const signal = score >= 3 ? "STRONG BUY" : score >= 1 ? "BUY" : score <= -3 ? "STRONG SELL" : score <= -1 ? "SELL" : "HOLD";
-  return { signal, score, reasons, vol };
+  const volValue = calcVolatility(hist); 
+  let currentScore = 0; 
+  let reasons = [];
+
+  if (stock.change > 1.5)  { currentScore += 1; reasons.push("Strong momentum ↑"); }
+  if (stock.change < -1.5) { currentScore -= 1; reasons.push("Selling pressure ↓"); }
+  if (rsiValue < 35)  { currentScore += 2; reasons.push(`Oversold RSI ${rsiValue}`); }
+  else if (rsiValue < 45) { currentScore += 1; reasons.push(`Near oversold RSI ${rsiValue}`); }
+  if (rsiValue > 65)  { currentScore -= 2; reasons.push(`Overbought RSI ${rsiValue}`); }
+  if (stock.pe && stock.pe < 7)  { currentScore += 2; reasons.push("Deep value P/E<7"); }
+  else if (stock.pe && stock.pe < 10) { currentScore += 1; reasons.push("Value P/E<10"); }
+  if (stock.divYield > 5) { currentScore += 1; reasons.push(`High yield ${stock.divYield}%`); }
+  if (lastSMA && stock.price > lastSMA * 1.01) { currentScore += 1; reasons.push("Above 20-day MA"); }
+  if (lastSMA && stock.price < lastSMA * 0.99) { currentScore -= 1; reasons.push("Below 20-day MA"); }
+  if (volValue < 30) { currentScore += 1; reasons.push("Low volatility"); }
+  if (volValue > 55) { currentScore -= 1; reasons.push("High volatility risk"); }
+
+  const signal = currentScore >= 3 ? "STRONG BUY" : currentScore >= 1 ? "BUY" : currentScore <= -3 ? "STRONG SELL" : currentScore <= -1 ? "SELL" : "HOLD";
+  return { signal, score: currentScore, reasons, vol: volValue };
 }
 
 const SIGNAL_STYLE = {
@@ -169,7 +173,7 @@ export default function App() {
   const [journalText, setJournalText] = useState("");
   const histCache = useRef({});
 
-  const getHistory = useCallback((symbol) => {
+  const getHistoryCached = useCallback((symbol) => {
     if (!histCache.current[symbol]) histCache.current[symbol] = genHistory(ALL_NSE_STOCKS.find(s => s.symbol === symbol)?.price || 50);
     return histCache.current[symbol];
   }, []);
@@ -258,11 +262,11 @@ export default function App() {
   };
 
   /* ---------- derived chart data ---------- */
-  const hist     = getHistory(selectedStock.symbol);
-  const rsi      = calcRSI(hist);
-  const { signal, score, reasons, vol } = getSignal(selectedStock, hist, rsi);
-  const smaHist  = calcSMA(hist, 20);
-  const bollHist = calcBollinger(hist, 20);
+  const hist       = getHistoryCached(selectedStock.symbol);
+  const rsi        = calcRSI(hist);
+  const { signal, reasons, vol } = getSignal(selectedStock, hist, rsi);
+  const smaHist    = calcSMA(hist, 20);
+  const bollHist   = calcBollinger(hist, 20);
   const signalStyle = SIGNAL_STYLE[signal] || SIGNAL_STYLE["HOLD"];
 
   const sectorData = portfolio.reduce((acc,p) => { acc[p.sector]=(acc[p.sector]||0)+p.value; return acc; }, {});
@@ -277,7 +281,7 @@ export default function App() {
   const watchlistStocks = ALL_NSE_STOCKS.filter(s=>watchlist.includes(s.symbol));
 
   /* ================================================================
-     RENDER
+      RENDER
   ================================================================ */
   return (
     <div style={{ fontFamily:"'Georgia',serif", background:"#060a12", minHeight:"100vh", color:"#e2e8f0", position:"relative" }}>
@@ -379,7 +383,7 @@ export default function App() {
               ):(
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
                   <thead><tr style={{background:"#060a12"}}>{["Stock","Ziidi","Faida","Total","Avg Price","Value","P&L","Div/yr","Signal"].map(h=><th key={h} style={{textAlign:"left",padding:"7px 13px",fontSize:9,color:"#334155",fontFamily:"'Source Sans 3',sans-serif",letterSpacing:.5,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-                  <tbody>{portfolio.map(p=>{const ph=getHistory(p.symbol);const pr=calcRSI(ph);const ps=getSignal(p,ph,pr);const ss=SIGNAL_STYLE[ps.signal]||SIGNAL_STYLE["HOLD"];return(
+                  <tbody>{portfolio.map(p=>{const ph=getHistoryCached(p.symbol);const pr=calcRSI(ph);const ps=getSignal(p,ph,pr);const ss=SIGNAL_STYLE[ps.signal]||SIGNAL_STYLE["HOLD"];return(
                     <tr key={p.symbol} className="hr" style={{borderBottom:"1px solid #060a12",cursor:"pointer"}} onClick={()=>{setSelectedStock(ALL_NSE_STOCKS.find(s=>s.symbol===p.symbol));setPage("market");}}>
                       <td style={{padding:"11px 13px"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:p.color,fontWeight:700}}>{p.symbol}</div><div style={{fontSize:9,color:"#475569",fontFamily:"'Source Sans 3',sans-serif"}}>{p.name.substring(0,18)}</div></td>
                       <td style={{padding:"11px 13px",fontSize:12,color:"#4ade80",fontFamily:"'Source Sans 3',sans-serif"}}>{p.ziidi||0}</td>
@@ -401,7 +405,7 @@ export default function App() {
             <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",padding:16}}>
               <div style={{fontSize:10,color:"#475569",letterSpacing:1,textTransform:"uppercase",marginBottom:12,fontFamily:"'Source Sans 3',sans-serif"}}>Watchlist</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
-                {watchlistStocks.map(s=>{const sh=getHistory(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
+                {watchlistStocks.map(s=>{const sh=getHistoryCached(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
                   <div key={s.symbol} className="sc" style={{"--c":s.color,background:"#060a12",borderRadius:10,padding:12,border:"1px solid #0e2040",cursor:"pointer"}} onClick={()=>{setSelectedStock(s);setPage("market");}}>
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:14,color:s.color,fontWeight:700}}>{s.symbol}</div>
                     <div style={{fontSize:9,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginBottom:5}}>{s.name.substring(0,15)}</div>
@@ -459,7 +463,7 @@ export default function App() {
             {/* Stock list */}
             <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",overflow:"hidden",maxHeight:"calc(100vh - 80px)",overflowY:"auto"}}>
               <div style={{padding:"10px 13px",borderBottom:"1px solid #0e2040",fontSize:10,color:"#475569",letterSpacing:1,textTransform:"uppercase",fontFamily:"'Source Sans 3',sans-serif"}}>NSE Stocks</div>
-              {ALL_NSE_STOCKS.map(s=>{const sh=getHistory(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
+              {ALL_NSE_STOCKS.map(s=>{const sh=getHistoryCached(s.symbol);const sr=calcRSI(sh);const ss=getSignal(s,sh,sr);const sst=SIGNAL_STYLE[ss.signal]||SIGNAL_STYLE["HOLD"];return(
                 <div key={s.symbol} className="hr" onClick={()=>setSelectedStock(s)} style={{padding:"9px 13px",cursor:"pointer",borderBottom:"1px solid #060a12",borderLeft:`3px solid ${selectedStock.symbol===s.symbol?s.color:"transparent"}`,background:selectedStock.symbol===s.symbol?"#0d1f35":"transparent"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div><span style={{fontFamily:"'Cinzel',serif",fontSize:12,color:s.color,fontWeight:700}}>{s.symbol}</span><span style={{fontSize:9,color:"#334155",marginLeft:5,fontFamily:"'Source Sans 3',sans-serif"}}>{s.sector}</span></div>
@@ -527,7 +531,7 @@ export default function App() {
               </div>
 
               {/* AI */}
-              <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",padding:14}}>
+              <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",padding:14}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <span style={{fontSize:10,color:"#475569",letterSpacing:1,textTransform:"uppercase",fontFamily:"'Source Sans 3',sans-serif"}}>🤖 AI Advisor</span>
                   <div style={{display:"flex",gap:6}}>
