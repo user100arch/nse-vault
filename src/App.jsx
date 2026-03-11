@@ -121,23 +121,8 @@ const SIGNAL_STYLE = {
 };
 
 /* ================================================================
-   AI HELPER — uses the built-in Claude API (no key needed)
+   AI HELPER — calls Vercel API routes (key is stored server-side)
 ================================================================ */
-async function claudeCall(messages, tools = null) {
-  const body = { model:"claude-haiku-4-5-20251001", max_tokens:1500, messages };
-  if (tools) body.tools = tools;
-  const headers = {
-    "Content-Type":"application/json",
-    "anthropic-version":"2023-06-01",
-    "anthropic-dangerous-direct-browser-access":"true",
-  };
-  if (tools) headers["anthropic-beta"] = "web-search-2025-03-05";
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST", headers,
-    body: JSON.stringify(body)
-  });
-  return res.json();
-}
 
 /* ================================================================
    MAIN APP
@@ -213,9 +198,14 @@ export default function App() {
   const callAI = async (prompt, mode, stockSym="") => {
     setAiState({ loading:true, text:"", stock:stockSym, mode });
     try {
-      const data = await claudeCall([{ role:"user", content:prompt }]);
-      if (data.error) { setAiState({ loading:false, text:`Error: ${data.error.message}`, stock:stockSym, mode }); return; }
-      const text = data.content?.filter(c=>c.type==="text").map(c=>c.text).join("") || "Analysis unavailable.";
+      const res = await fetch("/api/ai", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ messages:[{ role:"user", content:prompt }] })
+      });
+      const data = await res.json();
+      if (data.error) { setAiState({ loading:false, text:`Error: ${data.error}`, stock:stockSym, mode }); return; }
+      const text = data.text || "Analysis unavailable.";
       setAiState({ loading:false, text, stock:stockSym, mode });
     } catch(e) {
       setAiState({ loading:false, text:`Connection error: ${e.message}`, stock:stockSym, mode });
@@ -225,29 +215,9 @@ export default function App() {
   const fetchNews = async () => {
     setNewsLoading(true); setNewsSearched(true);
     try {
-      const userMsg = `Search for the latest NSE Kenya stock market news from today or this week (March 2026). Include news about Safaricom, Equity Bank, KCB, EABL, and general NSE market trends. Then return a JSON array of 6 news items with fields: title, source, summary (2 sentences max), sentiment (positive/negative/neutral), symbol (relevant NSE stock symbol or "NSE"), date. Return ONLY the JSON array, no markdown fences.`;
-      const tools = [{ "type":"web_search_20250305","name":"web_search" }];
-
-      // First call — model searches the web
-      const data1 = await claudeCall([{ role:"user", content:userMsg }], tools);
-      if (data1.error) { setNews([]); setNewsLoading(false); return; }
-
-      // If model used the tool, do a second call with the tool results included
-      let finalContent = data1.content || [];
-      if (data1.stop_reason === "tool_use") {
-        const toolResults = (data1.content || [])
-          .filter(b => b.type === "tool_use")
-          .map(b => ({ type:"tool_result", tool_use_id: b.id, content: b.input ? JSON.stringify(b.input) : "" }));
-        const data2 = await claudeCall([
-          { role:"user", content:userMsg },
-          { role:"assistant", content: data1.content },
-          { role:"user", content: toolResults }
-        ], tools);
-        finalContent = data2.content || [];
-      }
-
-      const text = finalContent.filter(b=>b.type==="text").map(b=>b.text).join("").trim();
-      try { setNews(JSON.parse(text.replace(/```json|```/g,"").trim())); } catch { setNews([]); }
+      const res = await fetch("/api/news", { method:"POST" });
+      const data = await res.json();
+      setNews(data.news || []);
     } catch(e) { console.error("fetchNews error", e); setNews([]); }
     setNewsLoading(false);
   };
