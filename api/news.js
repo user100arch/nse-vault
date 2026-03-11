@@ -5,7 +5,8 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const apiKey = "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";
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "OPENROUTER_API_KEY not set in Vercel env vars" });
 
   const prompt = `Give me 6 NSE Kenya stock market news items from March 2026. Cover Safaricom (SCOM), Equity Bank (EQTY), KCB, EABL, and general NSE market trends. Return ONLY a raw JSON array with no markdown, no backticks, no explanation before or after. Each object must have exactly: title, source, summary (max 2 sentences), sentiment (positive/negative/neutral), symbol (SCOM/EQTY/KCB/EABL/NSE), date.`;
 
@@ -24,6 +25,7 @@ module.exports = async function handler(req, res) {
         max_tokens: 1500
       }),
     });
+
     const data = await response.json();
     if (data.error) return res.status(200).json({ news: [], error: data.error.message });
 
