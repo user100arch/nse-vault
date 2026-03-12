@@ -224,7 +224,7 @@ export default function App() {
   };
   const deleteJournal = (id) => { const u = journalEntries.filter(j=>j.id!==id); setJournalEntries(u); save("journal",u); };
 
-  /* ---------- AI — calls secure Vercel API route ---------- */
+  /* ---------- AI — calls secure Vercel API route (used for stock analysis) ---------- */
   const callAI = async (prompt, mode, stockSym="") => {
     setAiState({ loading:true, text:"", stock:stockSym, mode });
     try {
@@ -242,6 +242,49 @@ export default function App() {
       setAiState({ loading:false, text, stock:stockSym, mode });
     } catch (e) {
       setAiState({ loading:false, text:"Could not connect to AI advisor. Please try again.", stock:stockSym, mode });
+    }
+  };
+
+  /* ---------- Ollama — local AI for Q&A (falls back to API if Ollama not running) ---------- */
+  const callOllama = async (prompt) => {
+    setAiState({ loading:true, text:"", stock:"general", mode:"qa" });
+    // First try local Ollama
+    try {
+      const res = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3.2",
+          prompt: `You are a helpful NSE Kenya stock market advisor for beginner investors using Faida Securities and Ziidi (M-Pesa). Answer clearly and practically in 3-5 sentences. Question: ${prompt}`,
+          stream: false
+        }),
+        signal: AbortSignal.timeout(15000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.response || "No response from Ollama.";
+        setAiState({ loading:false, text: "🦙 (Local AI) " + text, stock:"general", mode:"qa" });
+        return;
+      }
+    } catch {
+      // Ollama not running — fall back to API silently
+    }
+    // Fallback: use Vercel API
+    try {
+      const res = await fetch("/api/ai", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ messages:[{ role:"user", content:`I am a beginner NSE Kenya investor using Faida Securities and Ziidi. Answer simply and practically in 3-5 sentences: ${prompt}` }] })
+      });
+      const raw = await res.text();
+      let text = "Could not get an answer. Please try again.";
+      try {
+        const data = JSON.parse(raw);
+        text = data.text || data.error || text;
+      } catch { text = raw || text; }
+      setAiState({ loading:false, text: "☁️ (Cloud AI) " + text, stock:"general", mode:"qa" });
+    } catch {
+      setAiState({ loading:false, text:"Could not connect. Please check your internet connection or install Ollama.", stock:"general", mode:"qa" });
     }
   };
 
@@ -647,15 +690,28 @@ export default function App() {
                 </div>
               ))}
             </div>
-            {/* AI Q&A */}
+            {/* AI Q&A — uses local Ollama if installed, falls back to cloud API */}
             <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",padding:18}}>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:"#38bdf8",fontWeight:700,marginBottom:10}}>🤖 Ask Your Personal NSE Advisor</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:"#38bdf8",fontWeight:700}}>🤖 Ask Your Personal NSE Advisor</div>
+                <div style={{fontSize:10,color:"#334155",fontFamily:"'Source Sans 3',sans-serif"}}>🦙 Ollama if installed · ☁️ Cloud fallback</div>
+              </div>
               <div style={{display:"flex",gap:8,marginBottom:10}}>
-                <input id="qa" placeholder="e.g. What is a P/E ratio? When should I sell? How do dividends work?" onKeyDown={e=>{if(e.key==="Enter"&&e.target.value){callAI(`I'm a beginner NSE Kenya investor using Faida and Ziidi. Answer simply: ${e.target.value}`,"qa","general");e.target.value="";}}} style={{flex:1,background:"#060a12",border:"1px solid #1e3a5f",borderRadius:7,padding:"9px 12px",color:"#e2e8f0",fontSize:12}}/>
-                <button onClick={()=>{const i=document.getElementById("qa");if(i.value){callAI(`I'm a beginner NSE Kenya investor using Faida and Ziidi. Answer simply and practically: ${i.value}`,"qa","general");i.value="";}}} style={{padding:"9px 18px",background:"linear-gradient(135deg,#7c3aed,#0284c7)",border:"none",borderRadius:7,color:"#fff",fontSize:12,fontWeight:600}}>Ask →</button>
+                <input id="qa" placeholder="e.g. What is a P/E ratio? When should I sell? How do dividends work?"
+                  onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){callOllama(e.target.value.trim());e.target.value="";}}}
+                  style={{flex:1,background:"#060a12",border:"1px solid #1e3a5f",borderRadius:7,padding:"9px 12px",color:"#e2e8f0",fontSize:12}}/>
+                <button onClick={()=>{const i=document.getElementById("qa");if(i.value.trim()){callOllama(i.value.trim());i.value="";}}}
+                  style={{padding:"9px 18px",background:"linear-gradient(135deg,#7c3aed,#0284c7)",border:"none",borderRadius:7,color:"#fff",fontSize:12,fontWeight:600}}>Ask →</button>
+              </div>
+              <div style={{fontSize:10,color:"#334155",fontFamily:"'Source Sans 3',sans-serif",marginBottom:8}}>
+                💡 Install Ollama + llama3.2 for offline answers · Otherwise uses cloud AI automatically
               </div>
               {aiState.loading&&aiState.stock==="general"&&<div><div className="shimmer" style={{height:10,borderRadius:4,marginBottom:6,width:"80%"}}/><div className="shimmer" style={{height:10,borderRadius:4,width:"60%"}}/></div>}
-              {aiState.text&&aiState.stock==="general"&&!aiState.loading&&<div style={{fontSize:12,color:"#cbd5e1",lineHeight:1.8,fontFamily:"'Source Sans 3',sans-serif",borderTop:"1px solid #0e2040",paddingTop:10}}>{aiState.text}</div>}
+              {aiState.text&&aiState.stock==="general"&&!aiState.loading&&(
+                <div style={{fontSize:12,color:"#cbd5e1",lineHeight:1.8,fontFamily:"'Source Sans 3',sans-serif",borderTop:"1px solid #0e2040",paddingTop:10}}>
+                  {aiState.text}
+                </div>
+              )}
             </div>
           </div>
         )}
