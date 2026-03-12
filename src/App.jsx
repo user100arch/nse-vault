@@ -123,10 +123,7 @@ const SIGNAL_STYLE = {
 /* ================================================================
    MAIN APP
 ================================================================ */
-   MAIN APP
-================================================================ */
 export default function App() {
-  const [apiKey, setApiKey] = useState(() => storage.get("anthropic_key") || "");
   const [page, setPage] = useState("dashboard");
   const [holdings, setHoldings] = useState(() => storage.get("holdings") || {});
   const [watchlist, setWatchlist] = useState(() => storage.get("watchlist") || ["SCOM","EQTY","COOP","CIC","BRIT"]);
