@@ -20,28 +20,60 @@ const storage = {
 /* ================================================================
    NSE STOCK DATA  (prices as of March 2026)
 ================================================================ */
-const ALL_NSE_STOCKS = [
-  { symbol:"SCOM", name:"Safaricom PLC",            sector:"Telco",         price:24.15, change:3.17,  volume:30600000, pe:18.2, divYield:4.9, high52:28.50, low52:18.40, mktCap:"967B", color:"#22c55e" },
-  { symbol:"EQTY", name:"Equity Group Holdings",    sector:"Banking",       price:77.00, change:4.05,  volume:3652097,  pe:6.1,  divYield:5.8, high52:80.00, low52:41.20, mktCap:"291B", color:"#10b981" },
-  { symbol:"KCB",  name:"Kenya Commercial Bank",    sector:"Banking",       price:79.00, change:0.96,  volume:3950000,  pe:5.8,  divYield:6.2, high52:82.00, low52:44.00, mktCap:"254B", color:"#0ea5e9" },
-  { symbol:"COOP", name:"Co-operative Bank",        sector:"Banking",       price:29.95, change:0.17,  volume:890000,   pe:7.2,  divYield:6.1, high52:32.00, low52:20.50, mktCap:"175B", color:"#38bdf8" },
-  { symbol:"ABSA", name:"ABSA Bank Kenya",          sector:"Banking",       price:30.35, change:1.00,  volume:182410,   pe:8.4,  divYield:4.5, high52:35.00, low52:21.50, mktCap:"163B", color:"#ef4444" },
-  { symbol:"NCBA", name:"NCBA Group",               sector:"Banking",       price:89.50, change:2.29,  volume:450000,   pe:6.9,  divYield:5.2, high52:95.00, low52:58.00, mktCap:"147B", color:"#f97316" },
-  { symbol:"DTK",  name:"Diamond Trust Bank",       sector:"Banking",       price:156.75,change:0.00,  volume:50080,    pe:7.8,  divYield:3.1, high52:165.0, low52:92.00, mktCap:"89B",  color:"#a855f7" },
-  { symbol:"SCBK", name:"Standard Chartered Kenya", sector:"Banking",       price:330.00,change:2.80,  volume:95000,    pe:10.2, divYield:4.8, high52:350.0, low52:210.0, mktCap:"124B", color:"#ec4899" },
-  { symbol:"IMH",  name:"I & M Holdings",           sector:"Banking",       price:49.10, change:0.10,  volume:699650,   pe:6.5,  divYield:4.2, high52:56.00, low52:33.00, mktCap:"84B",  color:"#06b6d4" },
-  { symbol:"HFCK", name:"HF Group",                 sector:"Banking",       price:10.75, change:-0.46, volume:115470,   pe:null, divYield:0,   high52:14.50, low52:7.80,  mktCap:"8B",   color:"#84cc16" },
-  { symbol:"EABL", name:"East African Breweries",   sector:"Manufacturing", price:255.00,change:-0.10, volume:280380,   pe:22.4, divYield:3.8, high52:285.0, low52:138.0, mktCap:"204B", color:"#f59e0b" },
-  { symbol:"BAT",  name:"BAT Kenya",                sector:"Manufacturing", price:541.00,change:-1.28, volume:27280,    pe:12.1, divYield:8.9, high52:620.0, low52:440.0, mktCap:"54B",  color:"#d97706" },
-  { symbol:"CARB", name:"Carbacid Investments",     sector:"Manufacturing", price:29.30, change:-1.51, volume:27230,    pe:14.3, divYield:5.1, high52:35.00, low52:18.50, mktCap:"4B",   color:"#78716c" },
-  { symbol:"JUB",  name:"Jubilee Holdings",         sector:"Insurance",     price:389.75,change:0.32,  volume:6200,     pe:9.5,  divYield:3.2, high52:420.0, low52:270.0, mktCap:"38B",  color:"#6366f1" },
-  { symbol:"BRIT", name:"Britam Holdings",          sector:"Insurance",     price:11.95, change:1.70,  volume:373120,   pe:11.2, divYield:4.2, high52:14.00, low52:7.50,  mktCap:"31B",  color:"#3b82f6" },
-  { symbol:"CIC",  name:"CIC Insurance Group",      sector:"Insurance",     price:4.98,  change:-1.58, volume:205810,   pe:9.8,  divYield:3.1, high52:6.50,  low52:3.20,  mktCap:"9B",   color:"#8b5cf6" },
-  { symbol:"CTUM", name:"Centum Investment",        sector:"Investment",    price:14.30, change:-3.05, volume:15630,    pe:null, divYield:1.5, high52:19.50, low52:12.00, mktCap:"16B",  color:"#14b8a6" },
-  { symbol:"SBIC", name:"Stanbic Holdings",         sector:"Banking",       price:257.00,change:0.00,  volume:12000,    pe:8.9,  divYield:5.6, high52:270.0, low52:188.0, mktCap:"102B", color:"#fb7185" },
+/* ================================================================
+   DIVIDEND CALENDAR DATA (real data from mystocks.co.ke Mar 2026)
+================================================================ */
+const DIVIDEND_CALENDAR = [
+  { symbol:"ABSA", name:"ABSA Bank Kenya",       amount:1.85,  type:"Final",   exDate:"Mar 2026",  payDate:"Apr 2026",  status:"announced" },
+  { symbol:"BAT",  name:"BAT Kenya",             amount:60.00, type:"Final",   exDate:"Mar 2026",  payDate:"Apr 2026",  status:"announced" },
+  { symbol:"SCOM", name:"Safaricom",             amount:0.85,  type:"Interim", exDate:"Feb 25 2026",payDate:"Mar 2026", status:"book_closed" },
+  { symbol:"EABL", name:"East African Breweries",amount:4.00,  type:"Interim", exDate:"Feb 20 2026",payDate:"Mar 2026", status:"book_closed" },
+  { symbol:"KPLC", name:"Kenya Power",           amount:0.30,  type:"Interim", exDate:"Feb 23 2026",payDate:"Mar 2026", status:"book_closed" },
+  { symbol:"IMH",  name:"I & M Holdings",        amount:1.50,  type:"Interim", exDate:"Dec 15 2025",payDate:"Jan 2026", status:"paid" },
+  { symbol:"COOP", name:"Co-operative Bank",     amount:1.00,  type:"Interim", exDate:"Nov 26 2025",payDate:"Dec 2025", status:"paid" },
+  { symbol:"CARB", name:"Carbacid Investments",  amount:2.00,  type:"Final",   exDate:"Nov 26 2025",payDate:"Dec 2025", status:"paid" },
+  { symbol:"SCBK", name:"Standard Chartered",    amount:8.00,  type:"Interim", exDate:"Oct 2025",   payDate:"Oct 2025", status:"paid" },
+  { symbol:"NCBA", name:"NCBA Group",            amount:2.50,  type:"Interim", exDate:"Sep 2025",   payDate:"Oct 2025", status:"paid" },
+  { symbol:"SBIC", name:"Stanbic Holdings",      amount:3.80,  type:"Interim", exDate:"Sep 2025",   payDate:"Sep 2025", status:"paid" },
+  { symbol:"BAT",  name:"BAT Kenya",             amount:10.00, type:"Interim", exDate:"Sep 2025",   payDate:"Sep 2025", status:"paid" },
 ];
 
-const SECTOR_COLORS = { Banking:"#0ea5e9", Telco:"#22c55e", Manufacturing:"#f59e0b", Insurance:"#6366f1", Investment:"#14b8a6" };
+/* ================================================================
+   NSE STOCK DATA (updated prices March 11, 2026)
+================================================================ */
+const ALL_NSE_STOCKS = [
+  // TELCO
+  { symbol:"SCOM", name:"Safaricom PLC",            sector:"Telco",         price:24.00, change:3.17,  volume:30600000, pe:18.2, divYield:4.9, high52:28.50, low52:18.40, mktCap:"967B", color:"#22c55e" },
+  // BANKING
+  { symbol:"EQTY", name:"Equity Group Holdings",    sector:"Banking",       price:78.50, change:4.05,  volume:4810000,  pe:6.1,  divYield:5.8, high52:82.00, low52:41.20, mktCap:"298B", color:"#10b981" },
+  { symbol:"KCB",  name:"KCB Group",                sector:"Banking",       price:80.50, change:0.96,  volume:3950000,  pe:5.8,  divYield:6.2, high52:84.00, low52:44.00, mktCap:"258B", color:"#0ea5e9" },
+  { symbol:"COOP", name:"Co-operative Bank",        sector:"Banking",       price:29.50, change:0.17,  volume:890000,   pe:7.2,  divYield:6.1, high52:32.00, low52:20.50, mktCap:"173B", color:"#38bdf8" },
+  { symbol:"ABSA", name:"ABSA Bank Kenya",          sector:"Banking",       price:31.50, change:1.00,  volume:182410,   pe:8.4,  divYield:4.5, high52:35.00, low52:21.50, mktCap:"169B", color:"#ef4444" },
+  { symbol:"NCBA", name:"NCBA Group",               sector:"Banking",       price:91.00, change:2.29,  volume:450000,   pe:6.9,  divYield:5.2, high52:97.00, low52:58.00, mktCap:"149B", color:"#f97316" },
+  { symbol:"DTK",  name:"Diamond Trust Bank",       sector:"Banking",       price:155.00,change:0.00,  volume:50080,    pe:7.8,  divYield:3.1, high52:165.0, low52:92.00, mktCap:"88B",  color:"#a855f7" },
+  { symbol:"SCBK", name:"Standard Chartered Kenya", sector:"Banking",       price:335.00,change:2.80,  volume:95000,    pe:10.2, divYield:4.8, high52:355.0, low52:210.0, mktCap:"126B", color:"#ec4899" },
+  { symbol:"IMH",  name:"I & M Holdings",           sector:"Banking",       price:50.00, change:0.10,  volume:699650,   pe:6.5,  divYield:4.2, high52:56.00, low52:33.00, mktCap:"86B",  color:"#06b6d4" },
+  { symbol:"HFCK", name:"HF Group",                 sector:"Banking",       price:10.50, change:-0.46, volume:115470,   pe:null, divYield:0,   high52:14.50, low52:7.80,  mktCap:"8B",   color:"#84cc16" },
+  { symbol:"SBIC", name:"Stanbic Holdings",         sector:"Banking",       price:260.00,change:0.00,  volume:12000,    pe:8.9,  divYield:5.6, high52:275.0, low52:188.0, mktCap:"104B", color:"#fb7185" },
+  // MANUFACTURING
+  { symbol:"EABL", name:"East African Breweries",   sector:"Manufacturing", price:248.00,change:-0.10, volume:280380,   pe:22.4, divYield:3.8, high52:285.0, low52:138.0, mktCap:"198B", color:"#f59e0b" },
+  { symbol:"BAT",  name:"BAT Kenya",                sector:"Manufacturing", price:555.00,change:-1.28, volume:27280,    pe:12.1, divYield:8.9, high52:620.0, low52:440.0, mktCap:"56B",  color:"#d97706" },
+  { symbol:"CARB", name:"Carbacid Investments",     sector:"Manufacturing", price:28.00, change:-1.51, volume:27230,    pe:14.3, divYield:5.1, high52:35.00, low52:18.50, mktCap:"4B",   color:"#78716c" },
+  // INSURANCE
+  { symbol:"JUB",  name:"Jubilee Holdings",         sector:"Insurance",     price:395.00,change:0.32,  volume:6200,     pe:9.5,  divYield:3.2, high52:420.0, low52:270.0, mktCap:"39B",  color:"#6366f1" },
+  { symbol:"BRIT", name:"Britam Holdings",          sector:"Insurance",     price:12.20, change:1.70,  volume:373120,   pe:11.2, divYield:4.2, high52:14.00, low52:7.50,  mktCap:"32B",  color:"#3b82f6" },
+  { symbol:"CIC",  name:"CIC Insurance Group",      sector:"Insurance",     price:5.10,  change:-1.58, volume:205810,   pe:9.8,  divYield:3.1, high52:6.50,  low52:3.20,  mktCap:"9B",   color:"#8b5cf6" },
+  // INVESTMENT
+  { symbol:"CTUM", name:"Centum Investment",        sector:"Investment",    price:13.65, change:-3.05, volume:15630,    pe:null, divYield:1.5, high52:19.50, low52:12.00, mktCap:"15B",  color:"#14b8a6" },
+  // NEW STOCKS
+  { symbol:"KEGN", name:"KenGen",                   sector:"Energy",        price:7.28,  change:0.55,  volume:1200000,  pe:8.1,  divYield:6.2, high52:8.50,  low52:4.90,  mktCap:"118B", color:"#fbbf24" },
+  { symbol:"KPLC", name:"Kenya Power & Lighting",   sector:"Energy",        price:3.85,  change:1.32,  volume:2100000,  pe:null, divYield:3.9, high52:5.20,  low52:2.40,  mktCap:"20B",  color:"#f59e0b" },
+  { symbol:"KQ",   name:"Kenya Airways",            sector:"Transport",     price:4.10,  change:-2.38, volume:8310000,  pe:null, divYield:0,   high52:6.80,  low52:3.20,  mktCap:"17B",  color:"#ef4444" },
+  { symbol:"NMG",  name:"Nation Media Group",       sector:"Media",         price:20.50, change:0.00,  volume:45000,    pe:11.5, divYield:4.9, high52:25.00, low52:16.50, mktCap:"3B",   color:"#a78bfa" },
+  { symbol:"KPC",  name:"Kenya Pipeline Company",   sector:"Energy",        price:9.50,  change:2.15,  volume:3500000,  pe:14.2, divYield:2.8, high52:10.50, low52:9.00,  mktCap:"825B", color:"#34d399" },
+];
+
+const SECTOR_COLORS = { Banking:"#0ea5e9", Telco:"#22c55e", Manufacturing:"#f59e0b", Insurance:"#6366f1", Investment:"#14b8a6", Energy:"#fbbf24", Transport:"#ef4444", Media:"#a78bfa" };
 
 /* ================================================================
    STATISTICAL HELPERS
@@ -275,7 +307,7 @@ export default function App() {
       <div style={{background:"linear-gradient(180deg,#0a1628,#060a12)",borderBottom:"1px solid #0e2040",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:58,position:"sticky",top:0,zIndex:100}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:20,fontWeight:900,background:"linear-gradient(135deg,#38bdf8,#10b981)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:3}}>NSE VAULT 🇰🇪</div>
         <nav style={{display:"flex",gap:2}}>
-          {[["dashboard","📊 Dashboard"],["portfolio","💼 Portfolio"],["market","📈 Market"],["news","📰 News"],["alerts","🔔 Alerts"],["journal","📓 Journal"],["learn","🎓 Guide"]].map(([p,l])=>(
+          {[["dashboard","📊 Dashboard"],["portfolio","💼 Portfolio"],["market","📈 Market"],["news","📰 News"],["dividends","💰 Dividends"],["compare","⚖️ Compare"],["alerts","🔔 Alerts"],["journal","📓 Journal"],["learn","🎓 Guide"]].map(([p,l])=>(
             <button key={p} onClick={()=>setPage(p)} style={{padding:"6px 13px",background:page===p?"#0d2137":"transparent",border:"none",borderBottom:page===p?"2px solid #38bdf8":"2px solid transparent",color:page===p?"#38bdf8":"#475569",fontSize:12,transition:"all 0.15s"}}>
               {l}
             </button>
@@ -628,6 +660,169 @@ export default function App() {
           </div>
         )}
 
+        {/* ══════ DIVIDENDS ══════ */}
+        {page==="dividends"&&(
+          <div className="slide">
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:20,color:"#38bdf8",fontWeight:700,marginBottom:4}}>💰 Dividend Calendar</div>
+            <div style={{fontSize:11,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginBottom:18}}>Real NSE dividend events — updated March 2026</div>
+            {portfolio.filter(p=>p.total>0&&p.divYield>0).length>0&&(
+              <div style={{background:"linear-gradient(135deg,#052e16,#0a1628)",borderRadius:12,border:"1px solid #16a34a40",padding:18,marginBottom:18}}>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:"#22c55e",fontWeight:700,marginBottom:12}}>📈 Your Estimated Dividend Income</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+                  {portfolio.filter(p=>p.total>0&&p.divYield>0).map(p=>{
+                    const annualDiv=p.value*(p.divYield/100);
+                    return (
+                      <div key={p.symbol} style={{background:"#060a12",borderRadius:8,padding:12,border:"1px solid #16a34a20"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                          <span style={{fontFamily:"'Cinzel',serif",fontSize:12,color:p.color,fontWeight:700}}>{p.symbol}</span>
+                          <span style={{fontSize:11,color:"#22c55e",fontWeight:600}}>{p.divYield}% yield</span>
+                        </div>
+                        <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>{p.total} shares @ KES {p.price}</div>
+                        <div style={{fontSize:13,color:"#4ade80",fontWeight:700,marginTop:4}}>KES {annualDiv.toLocaleString("en-KE",{maximumFractionDigits:0})} / year</div>
+                        <div style={{fontSize:10,color:"#475569",fontFamily:"'Source Sans 3',sans-serif"}}>≈ KES {(annualDiv/12).toLocaleString("en-KE",{maximumFractionDigits:0})} / month</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #16a34a20",display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontFamily:"'Cinzel',serif",fontSize:12,color:"#94a3b8"}}>TOTAL ANNUAL DIVIDENDS</span>
+                  <span style={{fontFamily:"'Cinzel',serif",fontSize:14,color:"#22c55e",fontWeight:700}}>KES {portfolio.filter(p=>p.total>0).reduce((s,p)=>s+(p.value*(p.divYield/100)),0).toLocaleString("en-KE",{maximumFractionDigits:0})}</span>
+                </div>
+              </div>
+            )}
+            <div style={{display:"flex",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+              {[["announced","#fbbf24","📢 Announced"],["book_closed","#f97316","📕 Book Closed"],["paid","#22c55e","✅ Paid"]].map(([s,c,l])=>(
+                <div key={s} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:c,fontFamily:"'Source Sans 3',sans-serif"}}><div style={{width:8,height:8,borderRadius:"50%",background:c}}/>{l}</div>
+              ))}
+            </div>
+            <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"80px 1fr 80px 90px 110px 100px 90px",background:"#060a12",padding:"10px 16px",borderBottom:"1px solid #0e2040"}}>
+                {["SYMBOL","COMPANY","AMOUNT","TYPE","EX-DATE","PAY DATE","STATUS"].map(h=>(
+                  <div key={h} style={{fontSize:9,color:"#475569",letterSpacing:1,fontFamily:"'Source Sans 3',sans-serif",fontWeight:700}}>{h}</div>
+                ))}
+              </div>
+              {DIVIDEND_CALENDAR.map((d,i)=>{
+                const statusColor=d.status==="announced"?"#fbbf24":d.status==="book_closed"?"#f97316":"#22c55e";
+                const stock=ALL_NSE_STOCKS.find(s=>s.symbol===d.symbol);
+                const yourShares=holdings[d.symbol]?((holdings[d.symbol].ziidi||0)+(holdings[d.symbol].faida||0)):0;
+                const yourIncome=yourShares*d.amount;
+                return (
+                  <div key={i} style={{display:"grid",gridTemplateColumns:"80px 1fr 80px 90px 110px 100px 90px",padding:"12px 16px",borderBottom:"1px solid #0e204060",background:yourShares>0?"#0a1f10":undefined}}>
+                    <div style={{fontFamily:"'Cinzel',serif",fontSize:12,color:stock?.color||"#38bdf8",fontWeight:700}}>{d.symbol}</div>
+                    <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>
+                      {d.name}
+                      {yourShares>0&&<div style={{fontSize:10,color:"#22c55e",marginTop:2}}>You own {yourShares} shares → KES {yourIncome.toFixed(2)}</div>}
+                    </div>
+                    <div style={{fontSize:12,color:"#4ade80",fontWeight:600}}>KES {d.amount}</div>
+                    <div style={{fontSize:11,color:d.type==="Final"?"#f59e0b":"#38bdf8",fontFamily:"'Source Sans 3',sans-serif"}}>{d.type}</div>
+                    <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>{d.exDate}</div>
+                    <div style={{fontSize:11,color:"#94a3b8",fontFamily:"'Source Sans 3',sans-serif"}}>{d.payDate}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:6,height:6,borderRadius:"50%",background:statusColor}}/><span style={{fontSize:10,color:statusColor,fontFamily:"'Source Sans 3',sans-serif",textTransform:"capitalize"}}>{d.status.replace("_"," ")}</span></div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{fontSize:10,color:"#334155",fontFamily:"'Source Sans 3',sans-serif",marginTop:10,textAlign:"center"}}>Source: mystocks.co.ke · March 11, 2026 · Green rows = you hold this stock</div>
+          </div>
+        )}
+
+        {/* ══════ COMPARE ══════ */}
+        {page==="compare"&&(
+          <CompareStocksPage holdings={holdings} callAI={callAI} aiState={aiState} />
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   STOCK COMPARISON PAGE
+================================================================ */
+function CompareStocksPage({ holdings, callAI, aiState }) {
+  const [stockA, setStockA] = useState(ALL_NSE_STOCKS[0]);
+  const [stockB, setStockB] = useState(ALL_NSE_STOCKS[1]);
+  const metrics = [
+    {label:"Current Price",key:"price",fmt:v=>`KES ${v}`,better:"neither"},
+    {label:"Day Change %",key:"change",fmt:v=>`${v>0?"+":""}${v}%`,better:"higher"},
+    {label:"P/E Ratio",key:"pe",fmt:v=>v?`${v}x`:"N/A",better:"lower"},
+    {label:"Dividend Yield",key:"divYield",fmt:v=>`${v}%`,better:"higher"},
+    {label:"52-Week High",key:"high52",fmt:v=>`KES ${v}`,better:"neither"},
+    {label:"52-Week Low",key:"low52",fmt:v=>`KES ${v}`,better:"neither"},
+    {label:"Market Cap",key:"mktCap",fmt:v=>`KES ${v}`,better:"neither"},
+    {label:"Sector",key:"sector",fmt:v=>v,better:"neither"},
+  ];
+  function winner(m,a,b){
+    if(m.better==="neither")return "tie";
+    const va=a[m.key],vb=b[m.key];
+    if(va===null||va===undefined)return "b";
+    if(vb===null||vb===undefined)return "a";
+    if(m.better==="higher")return va>vb?"a":vb>va?"b":"tie";
+    return va<vb?"a":vb<va?"b":"tie";
+  }
+  const aWins=metrics.filter(m=>winner(m,stockA,stockB)==="a").length;
+  const bWins=metrics.filter(m=>winner(m,stockA,stockB)==="b").length;
+  const compareKey="cmp_"+stockA.symbol+"_"+stockB.symbol;
+  return (
+    <div className="slide">
+      <div style={{fontFamily:"'Cinzel',serif",fontSize:20,color:"#38bdf8",fontWeight:700,marginBottom:4}}>⚖️ Stock Comparison</div>
+      <div style={{fontSize:11,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",marginBottom:18}}>Compare any two NSE stocks side by side</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:12,marginBottom:18,alignItems:"center"}}>
+        {[["A",stockA,setStockA],[null,null,null],["B",stockB,setStockB]].map((item,idx)=>{
+          if(idx===1)return <div key="vs" style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:24,color:"#38bdf8",fontWeight:900}}>VS</div><div style={{fontSize:10,color:"#475569",marginTop:4}}>{aWins} — {bWins}</div></div>;
+          const [label,stock,setter]=item;
+          return (
+            <div key={label} style={{background:"#0a1628",borderRadius:12,border:`2px solid ${stock.color}40`,padding:14}}>
+              <div style={{fontSize:10,color:"#475569",letterSpacing:1,marginBottom:8,fontFamily:"'Source Sans 3',sans-serif"}}>STOCK {label}</div>
+              <select value={stock.symbol} onChange={e=>setter(ALL_NSE_STOCKS.find(s=>s.symbol===e.target.value))}
+                style={{width:"100%",background:"#060a12",border:`1px solid ${stock.color}60`,borderRadius:8,padding:"8px 10px",color:stock.color,fontSize:12,fontFamily:"'Cinzel',serif",fontWeight:700}}>
+                {ALL_NSE_STOCKS.map(s=><option key={s.symbol} value={s.symbol}>{s.symbol} — {s.name}</option>)}
+              </select>
+              <div style={{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:20,fontFamily:"'Cinzel',serif",color:stock.color,fontWeight:900}}>KES {stock.price}</span>
+                <span style={{fontSize:13,color:stock.change>=0?"#22c55e":"#ef4444",fontWeight:600}}>{stock.change>=0?"+":""}{stock.change}%</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",overflow:"hidden",marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 140px 1fr",background:"#060a12",padding:"10px 16px",borderBottom:"1px solid #0e2040"}}>
+          <div style={{fontSize:12,color:stockA.color,fontFamily:"'Cinzel',serif",fontWeight:700}}>{stockA.symbol}</div>
+          <div style={{fontSize:10,color:"#475569",letterSpacing:1,fontFamily:"'Source Sans 3',sans-serif",textAlign:"center"}}>METRIC</div>
+          <div style={{fontSize:12,color:stockB.color,fontFamily:"'Cinzel',serif",fontWeight:700,textAlign:"right"}}>{stockB.symbol}</div>
+        </div>
+        {metrics.map(m=>{
+          const w=winner(m,stockA,stockB);
+          return (
+            <div key={m.label} style={{display:"grid",gridTemplateColumns:"1fr 140px 1fr",padding:"11px 16px",borderBottom:"1px solid #0e204050",alignItems:"center"}}>
+              <div style={{fontSize:13,color:w==="a"?"#22c55e":"#94a3b8",fontWeight:w==="a"?700:400,fontFamily:"'Source Sans 3',sans-serif"}}>{w==="a"&&"✅ "}{m.fmt(stockA[m.key])}</div>
+              <div style={{fontSize:10,color:"#475569",fontFamily:"'Source Sans 3',sans-serif",textAlign:"center"}}>{m.label}</div>
+              <div style={{fontSize:13,color:w==="b"?"#22c55e":"#94a3b8",fontWeight:w==="b"?700:400,fontFamily:"'Source Sans 3',sans-serif",textAlign:"right"}}>{m.fmt(stockB[m.key])}{w==="b"&&" ✅"}</div>
+            </div>
+          );
+        })}
+        <div style={{padding:"12px 16px",background:"#060a12",borderTop:"1px solid #0e2040",textAlign:"center"}}>
+          {aWins>bWins&&<div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:stockA.color,fontWeight:700}}>🏆 {stockA.symbol} wins on {aWins} of {metrics.length} metrics</div>}
+          {bWins>aWins&&<div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:stockB.color,fontWeight:700}}>🏆 {stockB.symbol} wins on {bWins} of {metrics.length} metrics</div>}
+          {aWins===bWins&&<div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:"#38bdf8",fontWeight:700}}>🤝 Tied — {aWins} metrics each</div>}
+        </div>
+      </div>
+      <div style={{background:"#0a1628",borderRadius:12,border:"1px solid #0e2040",padding:16}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:"#38bdf8",fontWeight:700,marginBottom:10}}>🤖 AI Verdict</div>
+        <button onClick={()=>callAI(`Compare these two NSE Kenya stocks for a beginner investor with KES 10,000:
+
+${stockA.symbol} (${stockA.name}): Price KES ${stockA.price}, P/E ${stockA.pe||"N/A"}, Dividend Yield ${stockA.divYield}%, Sector ${stockA.sector}, Day change ${stockA.change}%
+
+${stockB.symbol} (${stockB.name}): Price KES ${stockB.price}, P/E ${stockB.pe||"N/A"}, Dividend Yield ${stockB.divYield}%, Sector ${stockB.sector}, Day change ${stockB.change}%
+
+Which is better to buy now and why? Give a clear, practical recommendation.`,"compare",compareKey)}
+          disabled={aiState.loading&&aiState.stock===compareKey}
+          style={{width:"100%",padding:"11px",background:"linear-gradient(135deg,#7c3aed,#0284c7)",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,marginBottom:10,opacity:aiState.loading&&aiState.stock===compareKey?0.7:1}}>
+          {aiState.loading&&aiState.stock===compareKey?"🔄 Analyzing...":"🤖 Ask AI: Which should I buy?"}
+        </button>
+        {aiState.loading&&aiState.stock===compareKey&&<div><div className="shimmer" style={{height:10,borderRadius:4,marginBottom:6,width:"90%"}}/><div className="shimmer" style={{height:10,borderRadius:4,width:"70%"}}/></div>}
+        {aiState.text&&aiState.stock===compareKey&&!aiState.loading&&<div style={{fontSize:12,color:"#cbd5e1",lineHeight:1.8,fontFamily:"'Source Sans 3',sans-serif"}}>{aiState.text}</div>}
       </div>
     </div>
   );
