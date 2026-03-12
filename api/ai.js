@@ -6,7 +6,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "OPENROUTER_API_KEY not set in Vercel env vars" });
+  if (!apiKey) return res.status(500).json({ text: "OPENROUTER_API_KEY not set in Vercel env vars." });
 
   let messages;
   try {
@@ -17,27 +17,33 @@ module.exports = async function handler(req, res) {
   }
   if (!messages) return res.status(400).json({ error: "messages required" });
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://nse-vault.vercel.app",
-        "X-Title": "NSE Vault"
-      },
-      body: JSON.stringify({
-        model: "openrouter/free",
-        messages: messages,
-        max_tokens: 1000
-      }),
-    });
+  // Try multiple free models in order until one responds
+  const models = [
+    "openrouter/auto",
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free"
+  ];
 
-    const data = await response.json();
-    if (data.error) return res.status(200).json({ text: "AI advisor unavailable right now. Please try again in a moment." });
-    const text = data.choices?.[0]?.message?.content || "Analysis unavailable.";
-    return res.status(200).json({ text });
-  } catch (e) {
-    return res.status(500).json({ text: "Could not connect to AI advisor. Please try again." });
+  for (const model of models) {
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://nse-vault.vercel.app",
+          "X-Title": "NSE Vault"
+        },
+        body: JSON.stringify({ model, messages, max_tokens: 1000 }),
+      });
+      const data = await response.json();
+      if (data.error) continue;
+      const text = data.choices?.[0]?.message?.content || "";
+      if (text) return res.status(200).json({ text });
+    } catch { continue; }
   }
+
+  return res.status(200).json({ text: "AI advisor is temporarily unavailable. Please try again in a moment." });
 };
