@@ -201,10 +201,14 @@ export default function App() {
         headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ messages:[{ role:"user", content:prompt }] })
       });
-      const data = await res.json();
-      const text = data.text || data.error || "Analysis unavailable.";
+      const raw = await res.text();
+      let text = "Analysis unavailable. Please try again.";
+      try {
+        const data = JSON.parse(raw);
+        text = data.text || data.error || data.message || text;
+      } catch { text = raw || text; }
       setAiState({ loading:false, text, stock:stockSym, mode });
-    } catch {
+    } catch (e) {
       setAiState({ loading:false, text:"Could not connect to AI advisor. Please try again.", stock:stockSym, mode });
     }
   };
